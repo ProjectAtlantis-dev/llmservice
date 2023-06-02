@@ -15,8 +15,8 @@ import {ThreadT} from "../types/ThreadT";
 import {DocumentShimT} from "../types/DocumentShimT";
 import {HTMLElementShimT} from "../types/HTMLElementShimT";
 
-import {TabDataFieldColorT} from "../common/BotCommon";
-import {TabDataFieldMapT} from "../common/BotCommon";
+import {TabDataFieldColorT} from "../common/Common";
+import {TabDataFieldMapT} from "../common/Common";
 
 import {TableHelperT} from "../types/TableHelperT";
 

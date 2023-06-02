@@ -1,95 +1,101 @@
+
+
+@font-face {
+    font-family: 'New York to Las Vegas';
+    src: url('/fonts/NewYorktoLasVegas.woff2') format('woff2');
+}
+
+
+.jetage {
+    font-family:        "New York to Las Vegas", "Andale Mono","Courier New";
+    -webkit-font-smoothing: subpixel-antialiased;
+}
+
+
+
+
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+
 body {
-    background-color: #1a1a1a;
-    color: #f2f2f2;
-    font-family: Arial, sans-serif;
+
+    box-sizing:         border-box;
+
+    margin:             10px;
+
+    font-family:        "Andale Mono","Courier New";
+    font-size:          10px;
+
+    background-color:   #000;
+    color:              #9090c0;
+
+
+    -webkit-font-smoothing: subpixel-antialiased;
+
+    height:              100%;
 }
 
-h1 {
-    font-size: 36px;
-    text-align: center;
-    margin-top: 50px;
-    margin-bottom: 50px;
+#outerView {
+
+    position:           absolute;
+
+    top:                0px;
+    left:               0px;
+    right:              0px;
+    bottom:             0px;
+
+    margin:             5px;
+
+    /* this is the matching border everyone sees */
+    border:             #444 solid 1px;
+
+    overflow:           hidden;
+
+    z-index:            10;
 }
 
-#messages {
-    font-family: "Andale Mono", Arial, sans-serif;
-    font-size: 14px;
-    background-color: #2a2a2a;
-    border-radius: 10px;
-    margin: 10px;
-    padding: 10px;
-    padding-bottom: 30px;
-    margin: 0 auto;
-    width: 80%;
-    height: 200px;
-    overflow-y: auto;
-    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
+#wrapperView {
+
+    position:           absolute;
+
+    top:                5px;
+    left:               5px;
+    right:              5px;
+    bottom:             5px;
+
+    margin:             5px;
+
+    z-index:            20;
+
+    background-image:   linear-gradient(to right, #582CA322, #0000aa77);
 }
 
-#messages p {
-    margin: 2px;
-    text-align: left;
-}
+#contentView {
+
+    position:           absolute;
+
+    top:                0px;
+    left:               0px;
+    right:              0px;
+    bottom:             0px;
 
 
-#messages::-webkit-scrollbar {
-    width: 8px;
-}
-
-#messages::-webkit-scrollbar-track {
-    background-color: #333;
-}
-
-#messages::-webkit-scrollbar-thumb {
-    background-color: #666;
-    border-radius: 10px;
-}
+    z-index:            25;
 
 
-form {
-    text-align: center;
-    margin-top: 50px;
-}
-
-
-#send-button {
-    background-color: #4CAF50;
-    border: none;
-    color: white;
-    padding: 10px 20px;
-    text-align: center;
-    text-decoration: none;
-    display: inline-block;
-    font-size: 16px;
-    margin-top: 10px;
-    cursor: pointer;
-    border-radius: 5px;
-    transition: background-color 0.3s ease;
-}
-
-#send-button:hover {
-    background-color: #3e8e41;
-}
-
-form input[type="text"] {
-    font-size: 18px;
-    padding: 10px;
-    border-radius: 5px;
-    border: none;
-    margin-right: 10px;
-    color: #fff;
-    background-color: #2a2a2a;
-    width: 70%;
-    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
 }
 
 
-form input[type="submit"] {
-    font-size: 18px;
-    padding: 10px;
-    border-radius: 5px;
-    border: none;
-    background-color: #4CAF50;
-    color: #f2f2f2;
-    cursor: pointer;
+
+.bot-terminal-row {
+
+    display:                flex;
+    flex-direction:         row;
+
 }
+

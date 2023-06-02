@@ -19,10 +19,10 @@ let threadManager = require("../selftyped/Thread").manager;
 
 let util = require("../untyped/Util").singleton;
 
-import {SockGenericFunctionT} from "../common/BotCommon";
-import {SockMessageFunctionT} from "../common/BotCommon";
-import {SockCallbacksT} from "../common/BotCommon";
-import {WebsocketT} from "../common/BotCommon";
+import {SockGenericFunctionT} from "../common/Common";
+import {SockMessageFunctionT} from "../common/Common";
+import {SockCallbacksT} from "../common/Common";
+import {WebsocketT} from "../common/Common";
 
 import {UnsafeBoardT} from "../types/UnsafeBoardT";
 let UnsafeBoard = require('../untyped/UnsafeBoard').class;
@@ -34,6 +34,8 @@ let UnsafeHelper = require("../selftyped/UnsafeHelper").class;
 import {PrettyT} from "../types/PrettyT";
 let pretty:PrettyT = require('../untyped/Pretty').singleton;
 
+import {RequestT} from "../common/Common";
+import {ReplyT} from "../common/Common";
 
 import {SockClientT} from "../types/SockClientT";
 
@@ -48,11 +50,12 @@ export class SockClient {
 
     public onConnect: Function;
     public onConnected: Function;
+    public onError: Function;
 
-    constructor() {
+    constructor(thread?) {
         let self = this;
 
-        self.thread = threadManager.get("sock-client");
+        self.thread = thread || threadManager.get("sock-client");
 
         process.on('unhandledRejection', function(err) {
             self.thread.console.softError("Unhandled promise rejection");
@@ -132,6 +135,9 @@ export class SockClient {
         let wtConnectError:SockMessageFunctionT = function(err) {
             self.thread.console.softError(err.toString());
             self.thread.console.softError("Unable to connect to server (is it running?)");
+            if (self.onError) {
+                self.onError(self.wsocket, "Unable to connect to server [ " + url + "] (is it running?)")
+            }
         };
         self.wsocket.on('connect_error', wtConnectError);
 
@@ -179,9 +185,12 @@ export class SockClient {
         let replyHandler = function(buffer:string) {
 
             try {
-                self.thread.console.bold("Received reply " + buffer);
+                //self.thread.console.bold("Received reply " + buffer);
 
-                let reply = unsafeHelper.extractUnsafeJSO(helperThread, buffer, resultBoard);
+                let reply:ReplyT = unsafeHelper.extractUnsafeJSO(helperThread, buffer, resultBoard);
+
+                //self.thread.console.debug("Received reply", reply);
+                self.thread.console.debug("Received reply");
 
                 let f = self.rMap[reply.handle];
                 if (f) {
@@ -206,12 +215,12 @@ export class SockClient {
 
     };
 
-    private makeRequest(clientHandle:string) {
+    private makeRequest(clientHandle:string):Promise<any> {
         let self = this;
 
         let p = new Promise(function(resolve, reject) {
             self.rMap[clientHandle] = async function(data, errorMsg) {
-                self.thread.console.info("Got reply");
+                //self.thread.console.info("Got reply");
                 // this is a temp function that maps result/error to promise resolve/reject
                 if (errorMsg) {
                     // this is a remote error not a connection error
@@ -226,16 +235,22 @@ export class SockClient {
         return p;
     };
 
-    sendRequest(data:any) {
+    public sendRequest(command:string, data?:any):Promise<any> {
         let self = this;
 
         try {
             let handle = uuid.v4();
             let p = self.makeRequest(handle);
 
+            let req:RequestT = {
+                handle,
+                command,
+                data: data? data: null
+            }
+
             //thread.console.debug("sending admin request", msg);
-            self.thread.console.debug("Sending request", data)
-            let buffer = pretty.inspect(data);
+            self.thread.console.debug("Sending request", req)
+            let buffer = pretty.inspect(req);
             self.wsocket.emit('request', buffer);
 
             return p;

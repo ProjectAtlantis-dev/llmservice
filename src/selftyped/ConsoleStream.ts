@@ -15,7 +15,7 @@ let util:UtilT = require('../untyped/Util').singleton;
 
 import {ConsoleStreamT} from "../types/ConsoleStreamT";
 
-import {ConsoleMessageT} from "../common/BotCommon";
+import {ConsoleMessageT} from "../common/Common";
 
 
 

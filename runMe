@@ -1,0 +1,3 @@
+tsc -w &
+node TypeBuilder.js -w &
+npm run start

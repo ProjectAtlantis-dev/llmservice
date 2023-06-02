@@ -1,26 +1,108 @@
+
 <!DOCTYPE html>
+
 <html>
 <head>
-    <title>Base Service (Node)</title>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.js"></script>
-    <link rel="stylesheet" href="/style/style.css">
+    <meta charset="utf-8" />
+    <!--meta http-equiv="cache-control" content="no-cache"/-->
+    <meta name="description" content="Project Atlantis">
+    <meta name="theme-color" content="#00000099" />
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Project Atlantis</title>
+    <base href="/">
+
+    <link rel="icon" href="/favicon.ico">
+
+    <link href="/style/style.css" type="text/css" rel='stylesheet'/>
 
     <script src="/bundle.js"></script>
+
 </head>
-<body>
-    <h1 id="title">LLM Service</h1>
-    <div id="messages">Starting...</div>
-    <form onsubmit="event.preventDefault(); ">
-        <input type="text" id="message-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
-        <button type="button" id="send-button">Send</button>
-    </form>
+<body id="body">
+
+    <div id="outerView" style="visibility: hidden;">
+
+        <div id="wrapperView">
+            <div id="contentView" style="font-size:14pt;">
+
+                <div id="chatForm" style="height:100%; display:flex; flex-direction: column;justify-content:flex-start;">
+
+                    <div id="chatHeader" style="flex:0; ">
+                        <div id="topBanner" class="bot-terminal-row" style="white-space: normal; padding:1px; margin: 10px">
+
+                            <div id="logoBanner" class="jetage" style="flex:0; white-space:nowrap; letter-spacing:1vmax; padding-left:1vmax; width:100%; font-size:24pt; -webkit-font-smoothing: subpixel-antialiased; -webkit-text-fill-color: transparent; background-clip: text; -webkit-background-clip: text; background-image: linear-gradient(45deg,#99ffff, #0000aa); text-shadow: 2px 2px 3px  #0005">
+                                ATLANTIS
+                            </div>
+
+                            <div style="flex:1;">
+                            </div>
+
+                            <div style="padding-left:1ch">
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div id="chatTerminal" style="flex:1; padding:10px; display:flex; flex-direction:row;  ">
+
+                        <div id="model-list" style="flex:1; flex-basis:0; border:1px solid #9090c0; display:flex; flex-direction:column; padding:5px" >
+
+                        </div>
+
+
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+
 </body>
 </html>
-<script>
 
-document.addEventListener('DOMContentLoaded', function() {
-    let main = new Main();
-    main.run();
-});
+
+<script type="module">
+
+
+let thread = threadManager.get("main");
+
+thread.console.info("Loaded page");
+
+let getElementById = function(path) {
+    let el = document.getElementById(path);
+    if (!el) {
+        throw new Error("Unable to find element: " + path);
+    }
+    return el;
+}
+
+let run = async function() {
+    try {
+        thread.console.info("Running with scissors");
+
+
+        // JS must be enabled
+        let outerView = getElementById("outerView");
+        outerView.style.visibility = "visible";
+
+
+        let main = new Main();
+        main.run();
+
+
+    } catch (err) {
+        thread.console.softError(err);
+    }
+}
+
+
+
+window.onload = run;
+
 
 </script>

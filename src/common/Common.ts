@@ -104,18 +104,14 @@ export type TabDataFieldMapT = {
 
 
 
-
-
-export type ChatCommandT = {
+export type RequestT = {
+    handle: string,
     command: string,
-    data: any,
-    handle:string
+    data: any
 }
 
-export type ChatCommandReplyT = {
-    info: string,
+export type ReplyT = {
+    handle: string,
     data: any,
-    error: string,
-    handle: string
+    error: string
 }
-

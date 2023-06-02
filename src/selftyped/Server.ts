@@ -35,8 +35,8 @@ let UnsafeHelper = require("../selftyped/UnsafeHelper").class;
 import {WebPackHelperT} from "../types/WebPackHelperT";
 let WebPackHelper = require("../selftyped/WebPackHelper").class;
 
-import {WebsocketMapT} from "../common/BotCommon";
-import {WebsocketT} from "../common/BotCommon";
+import {WebsocketMapT} from "../common/Common";
+import {WebsocketT} from "../common/Common";
 
 
 
@@ -181,82 +181,6 @@ let Server = function(thread:ThreadT):ServerT {
             });
         }
 
-
-
-        // markdown cache
-        /*
-        let mdCache = {};
-
-        app.use(async function (req, res, next) {
-            thread.console.info("foo: " + req.path);
-
-            if (req.path.endsWith('.md')) {
-                thread.console.info("Processing markdown: " + req.path);
-
-                const filePath = pathLib.join(process.cwd(), "web", req.path);
-
-                let html = mdCache[filePath];
-                if (!html) {
-                    try {
-                        let data = fsLib.readFileSync(filePath, 'utf8')
-                        html = mdCache[filePath] = md.render(data);
-
-                    } catch (err) {
-                        thread.console.softError(err.toString());
-                    }
-
-                }
-
-                thread.console.info(html);
-
-                res.send(`
-                    <!DOCTYPE html>
-
-                    <html>
-                    <head>
-                        <meta charset="utf-8" />
-                        <!--meta http-equiv="cache-control" content="no-cache"/-->
-                        <meta name="description" content="Base Service">
-                        <meta name="theme-color" content="#00000099" />
-                        <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
-                        <meta name="viewport" content="width=device-width, initial-scale=1">
-
-                        <title>Base Service</title>
-                        <base href="/">
-
-                        <link rel="icon" href="/favicon.ico">
-
-                        <link href="/style/style_fonts.css" type="text/css" rel='stylesheet'/>
-                        <link href="/style/style_scroll.css" type="text/css" rel='stylesheet'/>
-                        <link href="/style/style_base.css" type="text/css" rel='stylesheet'/>
-                        <link href="/style/style_glowie.css" type="text/css" rel='stylesheet'/>
-                        <link href="/style/style_home.css" type="text/css" rel='stylesheet'/>
-
-
-                        <script src="/bundle.js"></script>
-
-                    </head>
-                    <body id="body">
-
-                        <div id="outerView">
-                            <div id="wrapperView">
-                                <div id="contentView" style="font-size:14pt; padding:20px">
-
-                                    ${html}
-                                </div>
-                            </div>
-                        </div>
-                    </body>
-                    </html>
-                `);
-
-                return;
-            }
-
-            next();
-
-        });
-        */
 
         // put this after because we are paranoid
         app.use(express.static('web'));

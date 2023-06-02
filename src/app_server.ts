@@ -19,7 +19,8 @@ mainThread.console.bold("*****************");
 let uuid = require('uuid');
 require('source-map-support').install();  // stack trace gives us accurate TS line numbers
 //require('https').globalActor.options.ca = require('ssl-root-cas/latest').create();
-
+let fsLib = require('fs')
+let fsExtra = require('fs-extra')
 
 import {UtilT} from "./types/UtilT";
 let util:UtilT = require('./untyped/Util').singleton;
@@ -36,13 +37,15 @@ let UnsafeHelper = require("./selftyped/UnsafeHelper").class;
 import {ServerT} from "./types/ServerT";
 let Server = require("./selftyped/Server").class;
 
-import {WebsocketMapT} from "./common/BotCommon";
-import {WebsocketT} from "./common/BotCommon";
+import {WebsocketMapT} from "./common/Common";
+import {WebsocketT} from "./common/Common";
 
-
-import {PrintableContentT} from "./common/BotCommon";
+import {PrintableContentT} from "./common/Common";
 import {InspectObjectT} from "./types/InspectObjectT";
 let InspectObject = require("./selftyped/InspectObject").class;
+
+import {RequestT} from "./common/Common";
+import {ReplyT} from "./common/Common";
 
 import {SockClient} from "./selftyped/SockClient";
 
@@ -68,6 +71,7 @@ let run = async function() {
     let serverThread = threadManager.get(processName);
     let server:ServerT = new Server(serverThread);
 
+    await fsExtra.ensureDir("data")
 
     server.setup = async function(
         thread:ThreadT,
@@ -78,85 +82,87 @@ let run = async function() {
         let inspectThread = threadManager.get("inspect");
         let inspectObject:InspectObjectT = new InspectObject(inspectThread);
 
+        let resultBoard:UnsafeBoardT = new UnsafeBoard(thread, null, {});
+
         server.onConnect = async function(websocket:WebsocketT) {
 
-            let tag = "[nbs] ";
-            let sendAttention = function(msg) {
-                msg = tag + msg;
-                websocket.emit('attention', msg);
-            }
 
-            let sendInfo = function(msg) {
-                msg = tag + msg;
-                websocket.emit('info', msg);
-            }
+            websocket.on('request', async function(reqBuffer:string) {
 
-            let sendWarn = function(msg) {
-                msg = tag + msg;
-                websocket.emit('warn', msg);
-            }
+                try {
+                    thread.console.bold("Received request " + reqBuffer);
 
-            let sendError = function(msg) {
-                msg = tag + msg;
-                websocket.emit('error', msg);
-            }
+                    let req:RequestT = unsafeHelper.extractUnsafeJSO(thread, reqBuffer, resultBoard);
+                    thread.console.debug("request", req);
 
-            sendAttention("You have reached the Node base service");
-            //websocket.emit('info', "test info");
-            //sendWarn("test warn");
-            //sendError("test error");
+                    let reply:ReplyT = {
+                        handle: req.handle,
+                        data: null,
+                        error: null
+                    };
 
-            /*
-            {
-                let data = {x:7}
-                let buffer = pretty.inspect(data);
-                websocket.emit('data', buffer);
-            }
-            */
 
-            {
+                    if (req.command === "loadModelMap") {
 
-                thread.console.info("Connecting to Python base service")
-                let client = new SockClient();
-                await client.connect("ws://127.0.0.1:3050/");
+                        reply.data = modelMap;
 
-                sendInfo("Connected to Python base service");
+                    } else {
+                        reply.error = "Unrecognized command: " + req.command
+                    }
 
-                // processing incoming commands
-                websocket.on('message', async function(buffer:string) {
-                    thread.console.info("Got message: " + buffer)
-                    //client.wsocket.emit('message', buffer);
-                });
+                    let bufferOut = pretty.inspect(reply)
+                    websocket.emit('reply', bufferOut)
+                } catch (err) {
+                    thread.console.softError("Request failed: " + err.toString());
+                }
 
-                client.wsocket.on('info', function(buffer) {
-                    //websocket.emit('info', tag + buffer);
-                });
-
-                client.wsocket.on('warn', function(buffer) {
-                    //websocket.emit('warn', tag + buffer);
-                });
-
-                client.wsocket.on('error', function(buffer) {
-                    //websocket.emit('error', tag + buffer);
-                });
-
-                client.wsocket.on('input', function(buffer) {
-                    //websocket.emit('input', tag + buffer);
-                });
-
-                client.wsocket.on('attention', function(buffer) {
-                    //websocket.emit('attention', tag + buffer);
-                });
-
-                client.wsocket.on('data', function(buffer) {
-                    //websocket.emit('data', buffer);
-                });
-            }
-
+            });
 
         };
 
+        app.get("/", async function(req, res) {
+            thread.console.info("Default route")
+            res.redirect('/index.html');
+        });
 
+
+        let modelMap = {};
+        app.post("/llm_announce", async function(req, res) {
+            try {
+                thread.console.info("Received LLM announce")
+                let data = req.body;
+                thread.console.debug("data", data);
+
+
+                //let lines = util.bufferToLines(data.html)
+                //lines.length -=2
+                //lines.shift()
+                //thread.console.debug("lines", lines)
+            } catch (err) {
+                thread.console.softError(err.toString())
+            }
+            let result = {x:5}
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(result));
+        });
+
+        app.post("/llm_snapshot", async function(req, res) {
+            try {
+                thread.console.info("Received LLM snapshot")
+                let data = req.body;
+                thread.console.debug("data", data);
+
+                //let lines = util.bufferToLines(data.html)
+                //lines.length -=2
+                //lines.shift()
+                //thread.console.debug("lines", lines)
+            } catch (err) {
+                thread.console.softError(err.toString())
+            }
+            let result = {x:5}
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(result));
+        });
 
     }
 
@@ -164,7 +170,7 @@ let run = async function() {
     await server.run(PORTNUM, processName);
     server.runWebpack();
 
-    mainThread.console.bold("Base service (Node) ready");
+    mainThread.console.bold("LLM service ready");
 
 };
 

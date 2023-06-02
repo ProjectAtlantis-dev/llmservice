@@ -25,14 +25,14 @@ import {ThreadT} from "../types/ThreadT";
 import {DocumentShimT} from "../types/DocumentShimT";
 let DocumentShim = require("../selftyped/DocumentShim").class;
 
-import {TabDataFieldMapT} from "../common/BotCommon";
+import {TabDataFieldMapT} from "../common/Common";
 
 import {TableHelperT} from "../types/TableHelperT";
 let TableHelper = require("../selftyped/TableHelper").class;
 
 import { InspectObjectT } from "../types/InspectObjectT";
 
-import {PrintableContentT} from "../common/BotCommon";
+import {PrintableContentT} from "../common/Common";
 
 
 

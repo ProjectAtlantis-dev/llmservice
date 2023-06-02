@@ -9,7 +9,7 @@
     },
     "lib": [
         "ESNext",
-        "ES2017"
+        "ES2023"
     ],
     "include": [
         "./src/"
