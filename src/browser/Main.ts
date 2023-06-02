@@ -67,43 +67,41 @@ let Main = function ():MainT {
             // rebuild model list
             let modelList:HTMLElement = getElementById("model-list") as HTMLSelectElement;
 
-            let modelNames = Object.keys(modelMap);
-            thread.console.debug("model names", modelNames);
+            let clientNames = Object.keys(modelMap);
+            thread.console.debug("client names", clientNames);
 
             modelList.innerHTML = "";
 
-            if (modelNames.length) {
-                thread.console.info(modelNames.length + " model(s) found");
+            if (clientNames.length) {
+                thread.console.info(clientNames.length + " client(s) found");
 
-                modelNames.map(function(modelName) {
+                clientNames.map(function(clientName, i) {
 
-                    thread.console.info("Doing model " + modelName);
+                    thread.console.info("Doing client " + clientName);
 
-                    let clients = modelMap[modelName];
-                    let clientNames = Object.keys(clients);
+                    let client = modelMap[clientName];
 
-                    thread.console.info(clientNames.length + " clients found");
+                    thread.console.debug("client", client)
 
-                    clientNames.map(function(clientId) {
+                    let item = document.createElement("div");
+                    item.style.display = 'grid'
+                    item.style.boxSizing = "border-box"
+                    item.style.gridTemplateColumns = "5% 45% 25% 25%"
+                    item.style.whiteSpace = "nowrap";
 
-                        thread.console.info("Doing client " + clientId);
+                    item.innerHTML = "<div>" + (i+1) + "</div><div>" + client.clientId + "</div><div>" + client.service + "</div><div>" + client.model + "</div>";
 
-                        let model = clients[clientId];
-
-                        thread.console.debug("model", model)
-
-                        let item = document.createElement("div");
-                        item.innerText = model.service + "." + model.model
-                        modelList.appendChild(item);
-                    })
+                    modelList.appendChild(item);
+                    item.scrollIntoView(false);
 
                 });
 
+
             } else {
-                thread.console.info("No models found");
+                thread.console.info("No clients found");
 
                 let item = document.createElement("div");
-                item.innerText = "No model(s) found";
+                item.innerText = "No client(s) found";
                 modelList.appendChild(item);
 
             }

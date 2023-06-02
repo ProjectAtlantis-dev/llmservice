@@ -133,6 +133,15 @@ let run = async function() {
                 let data = req.body;
                 thread.console.debug("data", data);
 
+                modelMap[data.clientId] = data;
+
+                Object.keys(websockMap).map(function(name:string) {
+                    let websocket = websockMap[name];
+                    if (!websocket._dead) {
+                        websocket.emit('llm_announce', data.service, data.model)
+                    }
+
+                })
 
                 //let lines = util.bufferToLines(data.html)
                 //lines.length -=2
