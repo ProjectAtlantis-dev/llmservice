@@ -1,0 +1,24 @@
+{
+    "compilerOptions": {
+        "sourceMap": true,
+        "allowJs": true,  // needed for untyped dir
+        "target": "ESNext",
+        "module": "CommonJS",
+        "noImplicitAny": false,
+        "outDir": "lib"
+    },
+    "lib": [
+        "ESNext",
+        "ES2017"
+    ],
+    "include": [
+        "./src/"
+    ],
+    "exclude": [
+        "node_modules",
+        "lib",
+        "**/*.spec.ts",
+        "copyFiles"
+    ]
+
+}

@@ -1,0 +1,45 @@
+{
+  "name": "llm-service",
+  "version": "1.0.0",
+  "description": "Web Portal",
+  "main": "index.js",
+  "engines": {
+    "node": "^18"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node --trace-warnings --max-old-space-size=8192 lib/app_server.js",
+    "monitor_types": "node TypeBuilder.js -w",
+    "monitor_types_nowait": "node TypeBuilder.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/node": "^18.16.13",
+    "ansi-to-html": "^0.7.2",
+    "bluebird": "^3.7.2",
+    "browserify": "^17.0.0",
+    "browserify-fs": "^1.0.0",
+    "chokidar": "^3.5.2",
+    "colors": "^1.4.0",
+    "cookie-parser": "^1.4.6",
+    "express": "^4.17.1",
+    "express-session": "^1.17.3",
+    "extract-string": "^1.0.2",
+    "handlebars": "^4.7.7",
+    "json2csv": "^5.0.6",
+    "markdown-it": "^13.0.1",
+    "mkdirp": "^1.0.4",
+    "moment": "^2.29.1",
+    "nocache": "^3.0.1",
+    "node-domexception": "^1.0.0",
+    "socket.io": "^4.3.2",
+    "socket.io-client": "^4.4.1",
+    "source-map-support": "^0.5.20",
+    "strip-json-comments": "^3.1.1",
+    "typescript": "^4.4.3",
+    "underscore": "^1.13.1",
+    "uuid": "^8.3.2",
+    "webpack": "^5.68.0"
+  }
+}

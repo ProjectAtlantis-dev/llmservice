@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Base Service (Node)</title>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.js"></script>
+    <link rel="stylesheet" href="/style/style.css">
+
+    <script src="/bundle.js"></script>
+</head>
+<body>
+    <h1 id="title">LLM Service</h1>
+    <div id="messages">Starting...</div>
+    <form onsubmit="event.preventDefault(); ">
+        <input type="text" id="message-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <button type="button" id="send-button">Send</button>
+    </form>
+</body>
+</html>
+<script>
+
+document.addEventListener('DOMContentLoaded', function() {
+    let main = new Main();
+    main.run();
+});
+
+</script>
