@@ -19,8 +19,7 @@ mainThread.console.bold("*****************");
 let uuid = require('uuid');
 require('source-map-support').install();  // stack trace gives us accurate TS line numbers
 //require('https').globalActor.options.ca = require('ssl-root-cas/latest').create();
-let fsLib = require('fs')
-let fsExtra = require('fs-extra')
+let WebSocketBase = require('ws')
 
 import {UtilT} from "./types/UtilT";
 let util:UtilT = require('./untyped/Util').singleton;
@@ -71,8 +70,8 @@ let run = async function() {
     let serverThread = threadManager.get(processName);
     let server:ServerT = new Server(serverThread);
 
-    await fsExtra.ensureDir("data")
 
+    // for api connections
     server.setup = async function(
         thread:ThreadT,
         unsafeHelper:UnsafeHelperT,
@@ -84,13 +83,19 @@ let run = async function() {
 
         let resultBoard:UnsafeBoardT = new UnsafeBoard(thread, null, {});
 
-        server.onConnect = async function(websocket:WebsocketT) {
+        let modelMap = {};
 
+        // browser extension connections (no socket.io to keep it simple)
+        const wsServer = new WebSocketBase.Server({ port: 3020 });
+
+
+        // API connections
+        server.onConnect = async function(websocket:WebsocketT) {
 
             websocket.on('request', async function(reqBuffer:string) {
 
                 try {
-                    thread.console.bold("Received request " + reqBuffer);
+                    thread.console.bold("Received request from " + websocket._name);
 
                     let req:RequestT = unsafeHelper.extractUnsafeJSO(thread, reqBuffer, resultBoard);
                     thread.console.debug("request", req);
@@ -106,6 +111,14 @@ let run = async function() {
 
                         reply.data = modelMap;
 
+                    } else if (req.command === "sendModel") {
+
+                        type SendDataT = {
+
+                        }
+                        let sendData:SendDataT = req.data;
+
+
                     } else {
                         reply.error = "Unrecognized command: " + req.command
                     }
@@ -120,13 +133,85 @@ let run = async function() {
 
         };
 
+
+        type PayloadT = {
+            hostId: string,
+            clientId: string,
+            service: string,
+            model: string,
+            message: string,
+            data:string
+        }
+
+        wsServer.on('connection', conn => {
+            thread.console.info("Extension connected");
+
+            conn._client = {
+                status: "no further info available"
+            };
+
+            conn.on('message', async function(buffer)  {
+
+                try {
+
+                    let payload:PayloadT = JSON.parse(buffer)
+                    thread.console.debug("payload", payload);
+
+                    if (payload.message === "announce") {
+
+                        thread.console.info(`Connected to extension client`)
+
+                        modelMap[payload.clientId] = payload;
+
+                        Object.keys(websockMap).map(function(name:string) {
+                            thread.console.debug("Notifying " + name)
+
+                            let websocket = websockMap[name];
+                            if (!websocket._dead) {
+                                websocket.emit('llm_announce', payload.service, payload.model)
+                            }
+
+                        })
+
+                    } else if (payload.message === "snapshot") {
+
+                    } else {
+                        throw new Error("Unrecognized message type: " + payload.message)
+                    }
+
+                } catch (err) {
+                    thread.console.softError(err.toString())
+                }
+            })
+
+            conn.on('close', () => {
+                //thread.console.info("Extension client " + conn._client.clientId + " has disconnected");
+                thread.console.info("Extension client has disconnected");
+
+                let oldClient:PayloadT = conn._client;
+                thread.console.debug("client", oldClient);
+
+                Object.keys(websockMap).map(function(name:string) {
+                    let websocket = websockMap[name];
+                    if (!websocket._dead) {
+                        websocket.emit('llm_announce', oldClient.service, oldClient.model)
+                    }
+
+                })
+
+                delete modelMap[oldClient.clientId];
+            })
+
+        });
+
         app.get("/", async function(req, res) {
             thread.console.info("Default route")
             res.redirect('/index.html');
         });
 
 
-        let modelMap = {};
+
+        /*
         app.post("/llm_announce", async function(req, res) {
             try {
                 thread.console.info("Received LLM announce")
@@ -154,7 +239,9 @@ let run = async function() {
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify(result));
         });
+        */
 
+        /*
         app.post("/llm_snapshot", async function(req, res) {
             try {
                 thread.console.info("Received LLM snapshot")
@@ -172,7 +259,7 @@ let run = async function() {
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify(result));
         });
-
+        */
     }
 
     let PORTNUM = 3010

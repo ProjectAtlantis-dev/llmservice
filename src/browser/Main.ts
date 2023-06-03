@@ -86,10 +86,17 @@ let Main = function ():MainT {
                     let item = document.createElement("div");
                     item.style.display = 'grid'
                     item.style.boxSizing = "border-box"
-                    item.style.gridTemplateColumns = "5% 45% 25% 25%"
+                    item.style.gridTemplateColumns = "5% 45% 10% 10% 30%"
                     item.style.whiteSpace = "nowrap";
 
-                    item.innerHTML = "<div>" + (i+1) + "</div><div>" + client.clientId + "</div><div>" + client.service + "</div><div>" + client.model + "</div>";
+                    let clientType = "Chrome";
+                    if (client.hostId.indexOf("Edg")>= 0) {
+                        clientType = "Edge"
+                    } else if (client.hostId.indexOf("Brave")>= 0) {
+                        clientType = "Brave"
+                    }
+
+                    item.innerHTML = "<div>" + (i+1) + "</div><div>" + client.clientId + "</div><div>" + clientType + "</div><div>" + client.service + "</div><div>" + client.model + "</div>";
 
                     modelList.appendChild(item);
                     item.scrollIntoView(false);
