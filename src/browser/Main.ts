@@ -47,12 +47,35 @@ let Main = function ():MainT {
         return el;
     }
 
+
+
     self.run = async function() {
 
         thread.console.info("Connecting to LLM services");
 
         let llmThread = threadManager.get("llm client")
         let llmClient = new SockClient(llmThread);
+
+        // open websocket to editor server
+        await llmClient.connect("");
+
+        llmClient.wsocket.on("llm_announce", async function(service, model) {
+
+            try {
+
+                thread.console.info("Received LLM announce [" + service + "." + model + "]");
+                buildModelMap();
+
+            } catch (err) {
+                thread.console.softError("LLM announce failed: " + err.toString());
+            }
+
+        });
+
+        llmClient.wsocket.on("llm_snapshot", async function(data) {
+            thread.console.info("Received LLM snapshot");
+        });
+
 
 
         let modelMap = {};
@@ -88,6 +111,26 @@ let Main = function ():MainT {
                     item.style.boxSizing = "border-box"
                     item.style.gridTemplateColumns = "5% 45% 10% 10% 30%"
                     item.style.whiteSpace = "nowrap";
+                    item.style.cursor = 'pointer';
+
+                    item.addEventListener('mouseover', function() {
+                        item.style.backgroundColor = '#aaa';
+                        item.style.color = 'blue';
+                    });
+
+                    item.addEventListener('mouseout', function() {
+                        item.style.backgroundColor = '';
+                        item.style.color = '';
+                    });
+
+                    item.addEventListener('click', async function() {
+                        thread.console.info("Sending test")
+                        await llmClient.sendRequest("test", {
+                            clientId: client.clientId,
+                            data: "hello there"
+                        });
+                    });
+
 
                     let clientType = "Chrome";
                     if (client.hostId.indexOf("Edg")>= 0) {
@@ -116,21 +159,7 @@ let Main = function ():MainT {
 
         }
 
-        // open websocket to editor server
-        await llmClient.connect("");
 
-        llmClient.wsocket.on("llm_announce", async function(service, model) {
-
-            try {
-
-                thread.console.info("Received LLM announce [" + service + "." + model + "]");
-                buildModelMap();
-
-            } catch (err) {
-                thread.console.softError("LLM announce failed: " + err.toString());
-            }
-
-        });
 
         buildModelMap();
     }

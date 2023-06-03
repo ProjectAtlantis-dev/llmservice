@@ -84,6 +84,7 @@ let run = async function() {
         let resultBoard:UnsafeBoardT = new UnsafeBoard(thread, null, {});
 
         let modelMap = {};
+        let connMap = {};
 
         // browser extension connections (no socket.io to keep it simple)
         const wsServer = new WebSocketBase.Server({ port: 3020 });
@@ -111,13 +112,24 @@ let run = async function() {
 
                         reply.data = modelMap;
 
-                    } else if (req.command === "sendModel") {
+                    } else if (req.command === "test") {
 
-                        type SendDataT = {
+                        let clientInfo = req.data as PayloadT;
 
+                        let conn = connMap[clientInfo.clientId];
+                        if (conn) {
+                            thread.console.info("Testing connection [" + clientInfo.clientId + "]")
+
+                            let payload = {
+                                clientId: clientInfo.clientId,
+                                data: clientInfo.data
+                            };
+
+                            conn.send(JSON.stringify(payload));
+
+                        } else {
+                            thread.console.warn("Unable to test connection [" + clientInfo.clientId + "]; not found")
                         }
-                        let sendData:SendDataT = req.data;
-
 
                     } else {
                         reply.error = "Unrecognized command: " + req.command
@@ -146,9 +158,7 @@ let run = async function() {
         wsServer.on('connection', conn => {
             thread.console.info("Extension connected");
 
-            conn._client = {
-                status: "no further info available"
-            };
+            conn._client = null;
 
             conn.on('message', async function(buffer)  {
 
@@ -159,9 +169,11 @@ let run = async function() {
 
                     if (payload.message === "announce") {
 
-                        thread.console.info(`Connected to extension client`)
+                        thread.console.info(`Got extension client announce`)
 
                         modelMap[payload.clientId] = payload;
+                        conn._client = payload;
+                        connMap[payload.clientId] = conn;
 
                         Object.keys(websockMap).map(function(name:string) {
                             thread.console.debug("Notifying " + name)
@@ -174,6 +186,18 @@ let run = async function() {
                         })
 
                     } else if (payload.message === "snapshot") {
+
+                        thread.console.info(`Got extension client snapshot`)
+
+                        Object.keys(websockMap).map(function(name:string) {
+                            thread.console.debug("Notifying " + name)
+
+                            let websocket = websockMap[name];
+                            if (!websocket._dead) {
+                                websocket.emit('llm_snapshot', payload.service, payload.model)
+                            }
+
+                        })
 
                     } else {
                         throw new Error("Unrecognized message type: " + payload.message)
@@ -189,17 +213,22 @@ let run = async function() {
                 thread.console.info("Extension client has disconnected");
 
                 let oldClient:PayloadT = conn._client;
-                thread.console.debug("client", oldClient);
 
-                Object.keys(websockMap).map(function(name:string) {
-                    let websocket = websockMap[name];
-                    if (!websocket._dead) {
-                        websocket.emit('llm_announce', oldClient.service, oldClient.model)
-                    }
+                if (oldClient) {
+                    thread.console.debug("client", oldClient);
 
-                })
+                    delete modelMap[oldClient.clientId];
+                    delete connMap[oldClient.clientId];
 
-                delete modelMap[oldClient.clientId];
+                    Object.keys(websockMap).map(function(name:string) {
+                        let websocket = websockMap[name];
+                        if (!websocket._dead) {
+                            websocket.emit('llm_announce', oldClient.service, oldClient.model)
+                        }
+
+                    })
+
+                }
             })
 
         });
