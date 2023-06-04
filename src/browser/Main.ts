@@ -260,9 +260,9 @@ let Main = function ():MainT {
 
                         let now = new Date();
                         let secondsSince = (now.getTime() - client.lastSeen.getTime())/1000;
-                        if (secondsSince > 90) {
+                        if (secondsSince > 20) {
                             row.style.color = 'red'
-                        } else if (secondsSince > 60) {
+                        } else if (secondsSince > 10) {
                             row.style.color = 'yellow'
                         }
                         row.appendChild(cell)
