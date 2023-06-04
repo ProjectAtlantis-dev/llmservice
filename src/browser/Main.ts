@@ -81,33 +81,46 @@ let Main = function ():MainT {
         let modelMap = {};
         let selectedItem;
 
-        let history = [];
-        let historyCursor;
+        let history = ['foobar'];
+        let historyCursor = null;
 
         let sendButton = getElementById('model-send') as HTMLButtonElement;
 
         let inputArea = getElementById("model-input") as HTMLInputElement;
         inputArea.addEventListener('keydown', function(event) {
             if (!history.length) {
+                thread.console.debug("Nothing in history")
                 return;
             }
 
+            thread.console.debug("history", history);
+
             if (event.key === 'ArrowUp') {
-                if (!historyCursor) {
+                if (historyCursor === null) {
                     historyCursor = history.length-1;
+                    thread.console.debug("History set to " + historyCursor)
                 }
+
+                thread.console.info("History back")
+
                 if (historyCursor > 0) {
                     historyCursor--;
-                    inputArea.value = history[historyCursor];
                 }
+                inputArea.value = history[historyCursor];
             } else if (event.key === 'ArrowDown') {
-                if (!historyCursor) {
+                if (historyCursor === null) {
+                    thread.console.debug("No history cursor")
                     return;
                 }
 
+                thread.console.info("History fwd")
+
                 if (historyCursor < (history.length - 1)) {
                     historyCursor++;
+                    thread.console.debug("History set to " + historyCursor)
                     inputArea.value = history[historyCursor];
+                } else {
+                    inputArea.value = "";
                 }
 
                 if (historyCursor === (history.length - 1)) {
