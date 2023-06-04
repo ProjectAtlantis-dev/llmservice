@@ -64,6 +64,8 @@ process.on('SIGINT', () => {
     process.exit(0);
 });
 
+let PORTNUM = 3010   // both sockio and https
+let PORTNUM_WEBSOCK = 3020
 
 let run = async function() {
 
@@ -87,8 +89,9 @@ let run = async function() {
         let connMap = {};
 
         // browser extension connections (no socket.io to keep it simple)
-        const wsServer = new WebSocketBase.Server({ port: 3020 });
+        const wsServer = new WebSocketBase.Server({ port: PORTNUM_WEBSOCK });
 
+        thread.console.info("Listening on port " + PORTNUM_WEBSOCK);
 
         // API connections
         server.onConnect = async function(websocket:WebsocketT) {
@@ -224,6 +227,14 @@ let run = async function() {
 
         });
 
+        app.post("/llm", async function(req, res) {
+            let data = req.body;
+            thread.console.debug("llm", data);
+
+            // must return text
+            res.send('success');
+        });
+
         app.get("/", async function(req, res) {
             thread.console.info("Default route")
             res.redirect('/index.html');
@@ -232,7 +243,6 @@ let run = async function() {
 
     }
 
-    let PORTNUM = 3010
     await server.run(PORTNUM, processName);
     server.runWebpack();
 
