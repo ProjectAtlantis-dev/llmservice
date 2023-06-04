@@ -79,7 +79,43 @@ let Main = function ():MainT {
 
 
         let modelMap = {};
+        let selectedItem;
 
+        let history = [];
+        let historyCursor;
+
+        let sendButton = getElementById('model-send') as HTMLButtonElement;
+
+        let inputArea = getElementById("model-input") as HTMLInputElement;
+        inputArea.addEventListener('keydown', function(event) {
+            if (!history.length) {
+                return;
+            }
+
+            if (event.key === 'ArrowUp') {
+                if (!historyCursor) {
+                    historyCursor = history.length-1;
+                }
+                if (historyCursor > 0) {
+                    historyCursor--;
+                    inputArea.value = history[historyCursor];
+                }
+            } else if (event.key === 'ArrowDown') {
+                if (!historyCursor) {
+                    return;
+                }
+
+                if (historyCursor < (history.length - 1)) {
+                    historyCursor++;
+                    inputArea.value = history[historyCursor];
+                }
+
+                if (historyCursor === (history.length - 1)) {
+                    historyCursor = null;
+                }
+
+            }
+        });
 
         let buildModelMap = async function() {
 
@@ -113,6 +149,9 @@ let Main = function ():MainT {
                     item.style.whiteSpace = "nowrap";
                     item.style.cursor = 'pointer';
 
+                    item["_client"] = client;
+
+                    /*
                     item.addEventListener('mouseover', function() {
                         item.style.backgroundColor = '#aaa';
                         item.style.color = 'blue';
@@ -122,13 +161,25 @@ let Main = function ():MainT {
                         item.style.backgroundColor = '';
                         item.style.color = '';
                     });
+                    */
 
                     item.addEventListener('click', async function() {
-                        thread.console.info("Sending test")
-                        await llmClient.sendRequest("test", {
-                            clientId: client.clientId,
-                            data: "hello there"
-                        });
+
+                        if (selectedItem) {
+                            selectedItem.classList.remove('selected');
+                            sendButton.disabled = true;
+
+                            if (item === selectedItem) {
+                                selectedItem = null;
+                                return;
+                            }
+
+                        }
+
+                        item.classList.add('selected');
+                        selectedItem = item;
+                        sendButton.disabled = false;
+
                     });
 
 
@@ -145,6 +196,35 @@ let Main = function ():MainT {
                     item.scrollIntoView(false);
 
                 });
+
+                sendButton.addEventListener('click', async function() {
+
+                    if (selectedItem) {
+
+                        let client = selectedItem["_client"];
+
+                        if (!client) {
+                            thread.console.softError("No client found on selected object");
+                            return;
+                        }
+
+                        thread.console.debug("selected client", client)
+
+                        if (inputArea.value) {
+                            thread.console.info("Sending " + inputArea.value);
+
+                            await llmClient.sendRequest("test", {
+                                clientId: client.clientId,
+                                data: inputArea.value
+                            });
+
+                            history.push(inputArea.value);
+                            inputArea.value = "";
+                        }
+
+                    }
+                });
+
 
 
             } else {
