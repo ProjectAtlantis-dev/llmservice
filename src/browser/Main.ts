@@ -56,32 +56,13 @@ let Main = function ():MainT {
         let llmThread = threadManager.get("llm client")
         let llmClient = new SockClient(llmThread);
 
-        // open websocket to editor server
+        // open websocket to llm server
         await llmClient.connect("");
-
-        llmClient.wsocket.on("llm_announce", async function(service, model) {
-
-            try {
-
-                thread.console.info("Received LLM announce [" + service + "." + model + "]");
-                buildModelMap();
-
-            } catch (err) {
-                thread.console.softError("LLM announce failed: " + err.toString());
-            }
-
-        });
-
-        llmClient.wsocket.on("llm_snapshot", async function(data) {
-            thread.console.info("Received LLM snapshot");
-        });
-
-
 
         let modelMap = {};
         let selectedItem;
 
-        let history = ['foobar'];
+        let history = [];
         let historyCursor = null;
 
         let sendButton = getElementById('model-send') as HTMLButtonElement;
@@ -130,6 +111,11 @@ let Main = function ():MainT {
             }
         });
 
+        setInterval(function() {
+            buildModelMap();
+        },1000)
+
+
         let buildModelMap = async function() {
 
             thread.console.info("Requesting model map")
@@ -138,16 +124,24 @@ let Main = function ():MainT {
 
             // rebuild model list
             let modelList:HTMLElement = getElementById("model-list") as HTMLSelectElement;
-
-            let clientNames = Object.keys(modelMap);
-            thread.console.debug("client names", clientNames);
+            modelList.style.display = "block";
 
             modelList.innerHTML = "";
+            modelList.style.boxSizing = "border-box"
+
+            let clientNames = Object.keys(modelMap).sort();
+            thread.console.debug("client names", clientNames);
 
             if (clientNames.length) {
+
+                let table = document.createElement("table");
+                table.style.width = "100%";
+
                 thread.console.info(clientNames.length + " client(s) found");
 
                 clientNames.map(function(clientName, i) {
+
+                    let row = document.createElement("tr");
 
                     thread.console.info("Doing client " + clientName);
 
@@ -155,14 +149,14 @@ let Main = function ():MainT {
 
                     thread.console.debug("client", client)
 
-                    let item = document.createElement("div");
-                    item.style.display = 'grid'
-                    item.style.boxSizing = "border-box"
-                    item.style.gridTemplateColumns = "5% 45% 10% 10% 30%"
-                    item.style.whiteSpace = "nowrap";
-                    item.style.cursor = 'pointer';
+                    //let item = document.createElement("div");
+                    //item.style.display = 'grid'
+                    //item.style.boxSizing = "border-box"
+                    //item.style.gridTemplateColumns = "repeat(6, min-content);"
+                    //item.style.whiteSpace = "nowrap";
+                    //item.style.cursor = 'pointer';
 
-                    item["_client"] = client;
+                    row["_client"] = client;
 
                     /*
                     item.addEventListener('mouseover', function() {
@@ -176,39 +170,87 @@ let Main = function ():MainT {
                     });
                     */
 
-                    item.addEventListener('click', async function() {
+                    row.addEventListener('click', async function() {
 
                         if (selectedItem) {
                             selectedItem.classList.remove('selected');
                             sendButton.disabled = true;
 
-                            if (item === selectedItem) {
+                            if (row["client"].clientId === selectedItem["client"].clientId) {
                                 selectedItem = null;
                                 return;
                             }
 
                         }
 
-                        item.classList.add('selected');
-                        selectedItem = item;
+                        row.classList.add('selected');
+                        selectedItem = row;
                         sendButton.disabled = false;
 
                     });
 
 
-                    let clientType = "Chrome";
-                    if (client.hostId.indexOf("Edg")>= 0) {
-                        clientType = "Edge"
-                    } else if (client.hostId.indexOf("Brave")>= 0) {
-                        clientType = "Brave"
+
+                    let makeCell = function() {
+                        let cell = document.createElement("td");
+                        cell.style.padding = "5px"
+                        cell.style.borderRight = "1px solid #9090c0"
+                        return cell
                     }
 
-                    item.innerHTML = "<div>" + (i+1) + "</div><div>" + client.clientId + "</div><div>" + clientType + "</div><div>" + client.service + "</div><div>" + client.model + "</div>";
+                    {
+                        let cell = makeCell()
+                        cell.innerText = "" + (i+1)
+                        row.appendChild(cell)
+                    }
 
-                    modelList.appendChild(item);
-                    item.scrollIntoView(false);
+                    {
+                        let cell = makeCell()
+                        cell.innerText = "" + client.clientId
+                        row.appendChild(cell)
+                    }
+
+                    {
+                        let cell = makeCell()
+                        cell.innerText = "" + client.clientType
+                        row.appendChild(cell)
+                    }
+
+                    {
+                        let cell = makeCell()
+                        cell.innerText = "" + client.service
+                        row.appendChild(cell)
+                    }
+
+                    {
+                        let cell = makeCell()
+                        cell.innerText = client.model
+                        row.appendChild(cell)
+                    }
+
+                    {
+                        let cell = makeCell();
+                        let lastSeenTxt = client.lastSeen.getHours().toString().padStart(2,'0') + ":" +
+                                          client.lastSeen.getMinutes().toString().padStart(2,'0') + ":" +
+                                          client.lastSeen.getSeconds().toString().padStart(2,'0');
+                        cell.innerText = lastSeenTxt;
+
+                        let now = new Date();
+                        let secondsSince = (now.getTime() - client.lastSeen.getTime())/1000;
+                        if (secondsSince > 90) {
+                            row.style.color = 'red'
+                        } else if (secondsSince > 60) {
+                            row.style.color = 'yellow'
+                        }
+                        row.appendChild(cell)
+                    }
+
+                    table.appendChild(row);
+                    row.scrollIntoView(false);
 
                 });
+
+                modelList.appendChild(table)
 
                 sendButton.addEventListener('click', async function() {
 
@@ -254,7 +296,6 @@ let Main = function ():MainT {
 
 
 
-        buildModelMap();
     }
 
 
