@@ -174,12 +174,24 @@ let run = async function() {
 
                     if (client.message === "announce") {
 
-                        thread.console.info(`Got extension client announce`)
+                        //thread.console.info(`Got extension client announce`);
 
                         modelMap[client.clientId] = client;
                         modelMap[client.clientId].lastSeen = new Date();
                         conn._client = client;
                         connMap[client.clientId] = conn;
+                    } else {
+                        thread.console.debug("snapshot", client);
+
+                        Object.keys(websockMap).map(function(name:string) {
+                            thread.console.debug("Notifying " + name)
+
+                            let websocket = websockMap[name];
+                            if (!websocket._dead) {
+                                websocket.emit('snapshot', client);
+                            }
+
+                        })
                     }
 
                 } catch (err) {

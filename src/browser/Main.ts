@@ -59,8 +59,24 @@ let Main = function ():MainT {
         // open websocket to llm server
         await llmClient.connect("");
 
+
+        let modelOutput = getElementById("model-output");
+
+        llmClient.wsocket.on("snapshot", async function(client) {
+            thread.console.info("Received LLM snapshot");
+
+            thread.console.debug("snapshot", client)
+
+            modelOutput.innerText = client.data;
+
+            //modelOutput.scrollIntoView(false);
+            modelOutput.scrollTop = modelOutput.scrollHeight;
+        });
+
+
+
         let modelMap = {};
-        let selectedItem;
+        let selectedClient;
 
         let history = [];
         let historyCursor = null;
@@ -111,9 +127,6 @@ let Main = function ():MainT {
             }
         });
 
-        setInterval(function() {
-            buildModelMap();
-        },1000)
 
 
         let buildModelMap = async function() {
@@ -143,20 +156,28 @@ let Main = function ():MainT {
 
                     let row = document.createElement("tr");
 
-                    thread.console.info("Doing client " + clientName);
+                    //thread.console.info("Doing client " + clientName);
 
                     let client = modelMap[clientName];
 
-                    thread.console.debug("client", client)
+                    //thread.console.debug("client", client)
 
                     //let item = document.createElement("div");
                     //item.style.display = 'grid'
                     //item.style.boxSizing = "border-box"
                     //item.style.gridTemplateColumns = "repeat(6, min-content);"
-                    //item.style.whiteSpace = "nowrap";
-                    //item.style.cursor = 'pointer';
+                    row.style.whiteSpace = "nowrap";
+                    row.style.cursor = 'pointer';
 
                     row["_client"] = client;
+
+                    if (selectedClient) {
+                        //thread.console.debug("selectedClient", selectedClient)
+                        if (selectedClient.clientId === client.clientId) {
+                            //row.style.color = 'green';
+                            row.classList.add('selected');
+                        }
+                    }
 
                     /*
                     item.addEventListener('mouseover', function() {
@@ -172,6 +193,7 @@ let Main = function ():MainT {
 
                     row.addEventListener('click', async function() {
 
+                        /*
                         if (selectedItem) {
                             selectedItem.classList.remove('selected');
                             sendButton.disabled = true;
@@ -182,9 +204,10 @@ let Main = function ():MainT {
                             }
 
                         }
+                        */
 
                         row.classList.add('selected');
-                        selectedItem = row;
+                        selectedClient = client
                         sendButton.disabled = false;
 
                     });
@@ -246,39 +269,11 @@ let Main = function ():MainT {
                     }
 
                     table.appendChild(row);
-                    row.scrollIntoView(false);
+                    //row.scrollIntoView(false);
 
                 });
 
                 modelList.appendChild(table)
-
-                sendButton.addEventListener('click', async function() {
-
-                    if (selectedItem) {
-
-                        let client = selectedItem["_client"];
-
-                        if (!client) {
-                            thread.console.softError("No client found on selected object");
-                            return;
-                        }
-
-                        thread.console.debug("selected client", client)
-
-                        if (inputArea.value) {
-                            thread.console.info("Sending " + inputArea.value);
-
-                            await llmClient.sendRequest("test", {
-                                clientId: client.clientId,
-                                data: inputArea.value
-                            });
-
-                            history.push(inputArea.value);
-                            inputArea.value = "";
-                        }
-
-                    }
-                });
 
 
 
@@ -294,6 +289,40 @@ let Main = function ():MainT {
 
         }
 
+        setInterval(function() {
+            buildModelMap();
+        },2000)
+
+
+        sendButton.addEventListener('click', async function() {
+
+            thread.console.info("Send button got click")
+
+            if (selectedClient) {
+
+                let client = selectedClient;
+
+                if (!client) {
+                    thread.console.softError("No client found on selected object");
+                    return;
+                }
+
+                thread.console.debug("selected client", client)
+
+                if (inputArea.value) {
+                    thread.console.info("Sending " + inputArea.value);
+
+                    await llmClient.sendRequest("test", {
+                        clientId: client.clientId,
+                        data: inputArea.value
+                    });
+
+                    history.push(inputArea.value);
+                    inputArea.value = "";
+                }
+
+            }
+        });
 
 
     }
