@@ -93,7 +93,8 @@ let run = async function() {
             clientType: string,
             message: string,
             data:string,
-            lastSeen: Date
+            lastSeen: Date,
+            requestId: string
         }
 
         type ClientMapT = {
@@ -178,7 +179,7 @@ let run = async function() {
                 try {
 
                     let client:ClientT = JSON.parse(buffer)
-                    //thread.console.debug("client", client);
+
 
                     if (client.message === "announce") {
 
@@ -189,6 +190,7 @@ let run = async function() {
                         conn._client = client;
                         connMap[client.clientId] = conn;
                     } else {
+                        thread.console.info("Got snapshot")
                         thread.console.debug("snapshot", client);
 
                         Object.keys(websockMap).map(function(name:string) {
@@ -199,7 +201,14 @@ let run = async function() {
                                 websocket.emit('snapshot', client);
                             }
 
-                        })
+                        });
+
+                        if (client.requestId) {
+                            let callback = requestMap[client.requestId];
+                            if (callback) {
+
+                            }
+                        }
                     }
 
                 } catch (err) {
@@ -261,7 +270,13 @@ let run = async function() {
 
                             let requestId = uuid.v4();
 
-                            requestMap[requestId] = p;
+                            requestMap[requestId] = function(response) {
+                                if (response.error) {
+                                    reject(response.error)
+                                } else {
+                                    resolve(response.data)
+                                }
+                            }
 
                             let payload = {
                                 clientId: client.clientId,
