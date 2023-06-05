@@ -74,15 +74,19 @@ let Main = function ():MainT {
 
         let modelOutput = getElementById("model-output");
 
+        let getBufferKey = function(cl) {
+            return cl.clientId + " " + cl.service + " " + cl.model;
+        }
+
         llmClient.wsocket.on("snapshot", async function(client:ClientT) {
             thread.console.info("Received LLM snapshot");
 
             thread.console.debug("snapshot", client);
 
-            bufferMap[client.clientId] = client.data || "";
+            bufferMap[getBufferKey(client)] = client.data || "";
 
             if (selectedClient) {
-                modelOutput.innerText = bufferMap[selectedClient.clientId];
+                modelOutput.innerText = bufferMap[getBufferKey(selectedClient)];
                 modelOutput.scrollTop = modelOutput.scrollHeight;
             }
 
@@ -103,17 +107,20 @@ let Main = function ():MainT {
 
             thread.console.debug("history", history);
 
+
+
             if (event.key === 'ArrowUp') {
                 if (historyCursor === null) {
                     historyCursor = history.length-1;
                     thread.console.debug("History set to " + historyCursor)
+                } else {
+                    thread.console.info("History back")
+                    if (historyCursor > 0) {
+                        historyCursor--;
+                    }
+
                 }
 
-                thread.console.info("History back")
-
-                if (historyCursor > 0) {
-                    historyCursor--;
-                }
                 inputArea.value = history[historyCursor];
             } else if (event.key === 'ArrowDown') {
                 if (historyCursor === null) {
@@ -128,12 +135,10 @@ let Main = function ():MainT {
                     thread.console.debug("History set to " + historyCursor)
                     inputArea.value = history[historyCursor];
                 } else {
+                    historyCursor = null;
                     inputArea.value = "";
                 }
 
-                if (historyCursor === (history.length - 1)) {
-                    historyCursor = null;
-                }
 
             }
         });
@@ -221,7 +226,7 @@ let Main = function ():MainT {
                         selectedClient = client;
                         sendButton.disabled = false;
 
-                        modelOutput.innerText = bufferMap[selectedClient.clientId] || "";
+                        modelOutput.innerText = bufferMap[getBufferKey(selectedClient)] || "";
                         modelOutput.scrollTop = modelOutput.scrollHeight;
 
                     });
@@ -331,8 +336,11 @@ let Main = function ():MainT {
                         data: inputArea.value
                     });
 
-                    history.push(inputArea.value);
+                    if (inputArea.value != history[0]) {
+                        history.push(inputArea.value);
+                    }
                     inputArea.value = "";
+                    historyCursor = null;
                 }
 
             }
