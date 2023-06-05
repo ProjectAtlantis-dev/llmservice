@@ -85,8 +85,23 @@ let run = async function() {
 
         let resultBoard:UnsafeBoardT = new UnsafeBoard(thread, null, {});
 
-        let modelMap = {};
+        type ClientT = {
+            hostId: string,
+            clientId: string,
+            service: string,
+            model: string,
+            clientType: string,
+            message: string,
+            data:string,
+            lastSeen: Date
+        }
+
+        type ClientMapT = {
+            [clientId:string]:ClientT
+        }
+        let modelMap:ClientMapT = {};
         let connMap = {};
+        let requestMap = {};
 
         // browser extension connections (no socket.io to keep it simple)
         const wsServer = new WebSocketBase.Server({ port: PORTNUM_WEBSOCK });
@@ -118,7 +133,7 @@ let run = async function() {
 
                     } else if (req.command === "test") {
 
-                        let clientInfo = req.data as PayloadT;
+                        let clientInfo = req.data as ClientT;
 
                         let conn = connMap[clientInfo.clientId];
                         if (conn) {
@@ -150,16 +165,6 @@ let run = async function() {
         };
 
 
-        type PayloadT = {
-            hostId: string,
-            clientId: string,
-            service: string,
-            model: string,
-            clientType: string,
-            message: string,
-            data:string,
-            lastSeen: Date
-        }
 
         let lastSeenMap = {};
 
@@ -172,7 +177,7 @@ let run = async function() {
 
                 try {
 
-                    let client:PayloadT = JSON.parse(buffer)
+                    let client:ClientT = JSON.parse(buffer)
                     //thread.console.debug("client", client);
 
                     if (client.message === "announce") {
@@ -206,7 +211,7 @@ let run = async function() {
                 //thread.console.info("Extension client " + conn._client.clientId + " has disconnected");
                 thread.console.info("Extension client has disconnected");
 
-                let oldClient:PayloadT = conn._client;
+                let oldClient:ClientT = conn._client;
 
                 if (oldClient) {
                     thread.console.debug("client", oldClient);
@@ -227,12 +232,66 @@ let run = async function() {
 
         });
 
+        type LLMRequestT = {
+            service: string,
+            model: string,
+            prompt: string
+        }
         app.post("/llm", async function(req, res) {
-            let data = req.body;
+            let data = req.body as LLMRequestT;
             thread.console.debug("llm", data);
 
-            // must return text
-            res.send('success');
+            let p = new Promise(function(resolve, reject) {
+
+                let done = false;
+                Object.keys(modelMap).map(function(clientId) {
+                    if (done) {
+                        return;
+                    }
+
+                    let client = modelMap[clientId];
+                    if (client.service === data.service &&
+                        client.model === data.model) {
+
+                        // we have a match
+
+                        let conn = connMap[client.clientId];
+                        if (conn) {
+                            thread.console.info("Sending request to connection [" + client.clientId + "]")
+
+                            let requestId = uuid.v4();
+
+                            requestMap[requestId] = p;
+
+                            let payload = {
+                                clientId: client.clientId,
+                                data: data.prompt,
+                                requestId
+                            };
+
+                            conn.send(JSON.stringify(payload));
+                            done = true;
+                        } else {
+                            thread.console.warn("Skipping bad connection [" + client.clientId + "]")
+                        }
+                    }
+
+                });
+
+                if(!done) {
+                    throw new Error("No eligible client found");
+                }
+            });
+
+            try {
+                let result = await p;
+                res.send(result);
+            } catch (err) {
+                thread.console.softError(err.toString());
+                res.send("ERROR: " + err.toString());
+            }
+
+
         });
 
         app.get("/", async function(req, res) {
