@@ -153,7 +153,21 @@ let run = async function() {
 
 
 
-        let lastSeenMap = {};
+
+
+        let notifyIdle = function(client) {
+            if (client.requestId) {
+                let callback = requestMap[client.requestId];
+                if (callback) {
+                    thread.console.info("Request " + client.requestId + " is done")
+                    // should have either error or data attribute set
+                    callback(client);
+                }
+            }
+        }
+        //needs to exceed normal update delay (see extension content.js)
+        let debouncedNotifyIdle = util.debounce(notifyIdle, 7000);
+
 
         wsServer.on('connection', conn => {
             thread.console.info("Extension connected");
@@ -198,12 +212,8 @@ let run = async function() {
 
                         });
 
-                        if (client.requestId) {
-                            let callback = requestMap[client.requestId];
-                            if (callback) {
+                        debouncedNotifyIdle(client);
 
-                            }
-                        }
                     }
 
                 } catch (err) {
