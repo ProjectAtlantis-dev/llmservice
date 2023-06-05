@@ -20,6 +20,8 @@ let InspectObject = require("../selftyped/InspectObject").class;
 
 import {RequestT} from "../common/Common";
 import {ReplyT} from "../common/Common";
+import {ClientT} from "../common/Common";
+import {ClientMapT}  from "../common/Common";
 
 import {SockClient} from "../selftyped/SockClient";
 
@@ -51,6 +53,16 @@ let Main = function ():MainT {
 
     self.run = async function() {
 
+
+        let bufferMap = {};
+        let modelMap:ClientMapT = {};
+        let selectedClient:ClientT;
+
+        let history = [];
+        let historyCursor = null;
+
+
+
         thread.console.info("Connecting to LLM services");
 
         let llmThread = threadManager.get("llm client")
@@ -62,24 +74,23 @@ let Main = function ():MainT {
 
         let modelOutput = getElementById("model-output");
 
-        llmClient.wsocket.on("snapshot", async function(client) {
+        llmClient.wsocket.on("snapshot", async function(client:ClientT) {
             thread.console.info("Received LLM snapshot");
 
-            thread.console.debug("snapshot", client)
+            thread.console.debug("snapshot", client);
 
-            modelOutput.innerText = client.data;
+            bufferMap[client.clientId] = client.data || "";
 
-            //modelOutput.scrollIntoView(false);
-            modelOutput.scrollTop = modelOutput.scrollHeight;
+            if (selectedClient) {
+                modelOutput.innerText = bufferMap[selectedClient.clientId];
+                modelOutput.scrollTop = modelOutput.scrollHeight;
+            }
+
+
         });
 
 
 
-        let modelMap = {};
-        let selectedClient;
-
-        let history = [];
-        let historyCursor = null;
 
         let sendButton = getElementById('model-send') as HTMLButtonElement;
 
@@ -131,9 +142,9 @@ let Main = function ():MainT {
 
         let buildModelMap = async function() {
 
-            thread.console.info("Requesting model map")
+            //thread.console.info("Requesting model map")
             modelMap = await llmClient.sendRequest("loadModelMap");
-            thread.console.debug("modelMap", modelMap)
+            //thread.console.debug("modelMap", modelMap)
 
             // rebuild model list
             let modelList:HTMLElement = getElementById("model-list") as HTMLSelectElement;
@@ -143,14 +154,14 @@ let Main = function ():MainT {
             modelList.style.boxSizing = "border-box"
 
             let clientNames = Object.keys(modelMap).sort();
-            thread.console.debug("client names", clientNames);
+            //thread.console.debug("client names", clientNames);
 
             if (clientNames.length) {
 
                 let table = document.createElement("table");
                 table.style.width = "100%";
 
-                thread.console.info(clientNames.length + " client(s) found");
+                //thread.console.info(clientNames.length + " client(s) found");
 
                 clientNames.map(function(clientName, i) {
 
@@ -176,6 +187,7 @@ let Main = function ():MainT {
                         if (selectedClient.clientId === client.clientId) {
                             //row.style.color = 'green';
                             row.classList.add('selected');
+                            selectedClient["_row"] = row;
                         }
                     }
 
@@ -193,22 +205,24 @@ let Main = function ():MainT {
 
                     row.addEventListener('click', async function() {
 
-                        /*
-                        if (selectedItem) {
-                            selectedItem.classList.remove('selected');
-                            sendButton.disabled = true;
-
-                            if (row["client"].clientId === selectedItem["client"].clientId) {
-                                selectedItem = null;
-                                return;
+                        if (selectedClient) {
+                            if (selectedClient["_row"]) {
+                                selectedClient["_row"].classList.remove('selected');
                             }
 
+                            if (client.clientId === selectedClient.clientId) {
+                                // deselect
+                                selectedClient = null;
+                                return;
+                            }
                         }
-                        */
 
                         row.classList.add('selected');
-                        selectedClient = client
+                        selectedClient = client;
                         sendButton.disabled = false;
+
+                        modelOutput.innerText = bufferMap[selectedClient.clientId] || "";
+                        modelOutput.scrollTop = modelOutput.scrollHeight;
 
                     });
 

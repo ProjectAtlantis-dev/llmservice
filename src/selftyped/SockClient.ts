@@ -190,7 +190,7 @@ export class SockClient {
                 let reply:ReplyT = unsafeHelper.extractUnsafeJSO(helperThread, buffer, resultBoard);
 
                 //self.thread.console.debug("Received reply", reply);
-                self.thread.console.debug("Received reply");
+                //self.thread.console.debug("Received reply");
 
                 let f = self.rMap[reply.handle];
                 if (f) {
@@ -249,7 +249,7 @@ export class SockClient {
             }
 
             //thread.console.debug("sending admin request", msg);
-            self.thread.console.debug("Sending request", req)
+            //self.thread.console.debug("Sending request", req)
             let buffer = pretty.inspect(req);
             self.wsocket.emit('request', buffer);
 

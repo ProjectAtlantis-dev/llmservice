@@ -38,6 +38,8 @@ let Server = require("./selftyped/Server").class;
 
 import {WebsocketMapT} from "./common/Common";
 import {WebsocketT} from "./common/Common";
+import {ClientT} from "./common/Common";
+import {ClientMapT} from "./common/Common";
 
 import {PrintableContentT} from "./common/Common";
 import {InspectObjectT} from "./types/InspectObjectT";
@@ -84,22 +86,6 @@ let run = async function() {
         let inspectObject:InspectObjectT = new InspectObject(inspectThread);
 
         let resultBoard:UnsafeBoardT = new UnsafeBoard(thread, null, {});
-
-        type ClientT = {
-            hostId: string,
-            clientId: string,
-            service: string,
-            model: string,
-            clientType: string,
-            message: string,
-            data:string,
-            lastSeen: Date,
-            requestId: string
-        }
-
-        type ClientMapT = {
-            [clientId:string]:ClientT
-        }
         let modelMap:ClientMapT = {};
         let connMap = {};
         let requestMap = {};
@@ -189,10 +175,19 @@ let run = async function() {
                         modelMap[client.clientId].lastSeen = new Date();
                         conn._client = client;
                         connMap[client.clientId] = conn;
+
+                        // we don't broadcast but instead let client(s) refresh
+
+                    } else if (client.message === "terminated") {
+
+                        delete modelMap[client.clientId];
+                        delete connMap[client.clientId];
+
                     } else {
                         thread.console.info("Got snapshot")
                         thread.console.debug("snapshot", client);
 
+                        // broadcast the snapshot
                         Object.keys(websockMap).map(function(name:string) {
                             thread.console.debug("Notifying " + name)
 
@@ -227,14 +222,6 @@ let run = async function() {
 
                     delete modelMap[oldClient.clientId];
                     delete connMap[oldClient.clientId];
-
-                    Object.keys(websockMap).map(function(name:string) {
-                        let websocket = websockMap[name];
-                        if (!websocket._dead) {
-                            websocket.emit('close', oldClient.service, oldClient.model)
-                        }
-
-                    })
 
                 }
             })

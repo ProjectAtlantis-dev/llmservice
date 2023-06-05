@@ -103,6 +103,23 @@ export type TabDataFieldMapT = {
 
 
 
+export type ClientT = {
+    hostId: string,
+    clientId: string,
+    service: string,
+    model: string,
+    clientType: string,
+    message: string,
+    data:string,
+    lastSeen: Date,
+    requestId: string
+}
+
+export type ClientMapT = {
+    [clientId:string]:ClientT
+}
+
+
 
 export type RequestT = {
     handle: string,
@@ -115,3 +132,6 @@ export type ReplyT = {
     data: any,
     error: string
 }
+
+
+
