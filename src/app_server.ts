@@ -195,7 +195,7 @@ let run = async function() {
                         thread.console.warn("Resetting conversation memory")
                     }
 
-                    thread.console.info("client data: " + client.data)
+                    //thread.console.info("client data: " + client.data)
                     thread.console.info("Trying to find prompt [" + reqItem.request.prompt + "]")
                     let start = client.data.indexOf(reqItem.request.prompt, offset);
 
@@ -207,6 +207,7 @@ let run = async function() {
                         convoMap[client.clientId] = start + reqItem.request.prompt.length + client.data.length;
                     } else {
                         thread.console.softError("Unable to find prompt at offset " + offset)
+                        thread.console.info("Buffer: " + client.data.substr(start),20 )
                         // assume a reset happened
                         buffer = client.data;
                         convoMap[client.clientId] = client.data.length;
@@ -349,7 +350,7 @@ let run = async function() {
                 });
 
                 if(!done) {
-                    throw new Error("No eligible client found");
+                    throw new Error("No eligible client [" + reqData.service + "." + reqData.model + "] found (is browser+extension running?)");
                 }
             });
 
