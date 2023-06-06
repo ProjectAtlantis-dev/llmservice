@@ -47,6 +47,7 @@ let InspectObject = require("./selftyped/InspectObject").class;
 
 import {RequestT} from "./common/Common";
 import {ReplyT} from "./common/Common";
+import {LLMRequestT} from "./common/Common";
 
 import {SockClient} from "./selftyped/SockClient";
 
@@ -67,7 +68,7 @@ process.on('SIGINT', () => {
 });
 
 let PORTNUM = 3010   // both sockio and https
-let PORTNUM_WEBSOCK = 3020
+let PORTNUM_WEBSOCK = 3020 // base websocket for talking w browser extension
 
 let run = async function() {
 
@@ -88,7 +89,20 @@ let run = async function() {
         let resultBoard:UnsafeBoardT = new UnsafeBoard(thread, null, {});
         let modelMap:ClientMapT = {};
         let connMap = {};
-        let requestMap = {};
+
+        type ConvoMapT = {
+            [clientId:string]:number
+        }
+        let convoMap:ConvoMapT = {};
+
+        type LLMRequestMapItemT = {
+            callback: Function,
+            request: LLMRequestT
+        }
+        type LLMRequestMapT = {
+            [clientId:string]: LLMRequestMapItemT
+        }
+        let requestMap:LLMRequestMapT = {};
 
         // browser extension connections (no socket.io to keep it simple)
         const wsServer = new WebSocketBase.Server({ port: PORTNUM_WEBSOCK });
@@ -155,14 +169,62 @@ let run = async function() {
 
 
 
-        let notifyIdle = function(client) {
+        let notifyIdle = function(client:ClientT) {
+            thread.console.info("Checking to see if " + client.clientId + " is done")
             if (client.requestId) {
-                let callback = requestMap[client.requestId];
-                if (callback) {
+                let reqItem = requestMap[client.requestId];
+                if (reqItem) {
                     thread.console.info("Request " + client.requestId + " is done")
+
+                    // full snapshot is in client.data
+                    // we want to calculate the new portion (after the prompt)
+
+
+                    let offset = 0;
+                    if (!Reflect.has(convoMap, client.clientId)) {
+                        thread.console.info("Creating new conversation memory")
+                        offset = convoMap[client.clientId] = 0;
+                    } else {
+                        offset = convoMap[client.clientId];
+                        thread.console.info("Using existing conversation memory at offset " + offset)
+                    }
+
+                    if (client.data.length < offset) {
+                        // assume a reset happened
+                        offset = convoMap[client.clientId] = 0;
+                        thread.console.warn("Resetting conversation memory")
+                    }
+
+                    thread.console.info("client data: " + client.data)
+                    thread.console.info("Trying to find prompt [" + reqItem.request.prompt + "]")
+                    let start = client.data.indexOf(reqItem.request.prompt, offset);
+
+                    let buffer;
+                    if (start >= 0) {
+                        thread.console.info("Found prompt at " + start)
+                        buffer = client.data.substring(start + reqItem.request.prompt.length);
+                        thread.console.info("Buffer: " + buffer);
+                        convoMap[client.clientId] = start + reqItem.request.prompt.length + client.data.length;
+                    } else {
+                        thread.console.softError("Unable to find prompt at offset " + offset)
+                        // assume a reset happened
+                        buffer = client.data;
+                        convoMap[client.clientId] = client.data.length;
+                    }
+
+                    client.completion = buffer;
+
+
                     // should have either error or data attribute set
-                    callback(client);
+                    reqItem.callback(client);
+                } else {
+                    thread.console.warn("Request " + client.requestId + " not found");
+                    thread.console.debug("request map", requestMap);
                 }
+            } else {
+                // not found
+                thread.console.warn("No request found")
+                thread.console.debug("client", client)
             }
         }
         //needs to exceed normal update delay (see extension content.js)
@@ -201,6 +263,8 @@ let run = async function() {
                         thread.console.info("Got snapshot")
                         thread.console.debug("snapshot", client);
 
+
+
                         // broadcast the snapshot
                         Object.keys(websockMap).map(function(name:string) {
                             thread.console.debug("Notifying " + name)
@@ -238,14 +302,9 @@ let run = async function() {
 
         });
 
-        type LLMRequestT = {
-            service: string,
-            model: string,
-            prompt: string
-        }
         app.post("/llm", async function(req, res) {
-            let data = req.body as LLMRequestT;
-            thread.console.debug("llm", data);
+            let reqData = req.body as LLMRequestT;
+            thread.console.debug("llm", reqData);
 
             let p = new Promise(function(resolve, reject) {
 
@@ -256,8 +315,8 @@ let run = async function() {
                     }
 
                     let client = modelMap[clientId];
-                    if (client.service === data.service &&
-                        client.model === data.model) {
+                    if (client.service === reqData.service &&
+                        client.model === reqData.model) {
 
                         // we have a match
 
@@ -267,18 +326,17 @@ let run = async function() {
 
                             let requestId = uuid.v4();
 
-                            requestMap[requestId] = function(response) {
-                                if (response.error) {
-                                    reject(response.error)
-                                } else {
-                                    resolve(response.data)
-                                }
+                            requestMap[requestId] = {
+                                callback:   function(client:ClientT) {
+                                                resolve(client)
+                                            },
+                                request:    reqData
                             }
 
                             let payload = {
                                 clientId: client.clientId,
-                                data: data.prompt,
-                                requestId
+                                requestId,
+                                data: reqData.prompt
                             };
 
                             conn.send(JSON.stringify(payload));
@@ -296,11 +354,11 @@ let run = async function() {
             });
 
             try {
-                let result = await p;
-                res.send(result);
+                let result:ClientT = await p as ClientT;
+                res.send(JSON.stringify(result));
             } catch (err) {
                 thread.console.softError(err.toString());
-                res.send("ERROR: " + err.toString());
+                res.send(JSON.stringify({error: err.toString()}));
             }
 
 

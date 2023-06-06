@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/semi */
 
 
-
+// buffered and colored console logging
 export type ConsoleMessageT = {
     id: number,
     consoleId: number,
@@ -16,6 +16,8 @@ export type ConsoleMessageT = {
     obj:any
 };
 
+
+// below websocket stuff is socket io stuff (Server.ts and SockClient.ts)
 
 // connect
 // reconnect
@@ -57,8 +59,17 @@ export type WebsocketMapT = {
     [name:string]: WebsocketT
 };
 
-export type ValueRefT = {
-    ref: string;
+// these are only used in context of websocket stuff
+export type RequestT = {
+    handle: string,
+    command: string,
+    data: any
+}
+
+export type ReplyT = {
+    handle: string,
+    data: any,
+    error: string
 }
 
 
@@ -69,7 +80,7 @@ export type ValueRefT = {
 
 
 
-
+// used for JSON and tabular output
 export type PrintableContentT = {
     htmlOutput?: string,
     stringOutput?: string,
@@ -103,6 +114,9 @@ export type TabDataFieldMapT = {
 
 
 
+// LLM specific stuff
+
+// browser client
 export type ClientT = {
     hostId: string,
     clientId: string,
@@ -112,7 +126,10 @@ export type ClientT = {
     message: string,
     data:string,
     lastSeen: Date,
-    requestId: string
+
+    // for conversation stuff
+    requestId: string,
+    completion: string
 }
 
 export type ClientMapT = {
@@ -120,17 +137,12 @@ export type ClientMapT = {
 }
 
 
+// LLM conversation stuff
 
-export type RequestT = {
-    handle: string,
-    command: string,
-    data: any
-}
-
-export type ReplyT = {
-    handle: string,
-    data: any,
-    error: string
+export type LLMRequestT = {
+    service: string,
+    model: string,
+    prompt: string
 }
 
 
