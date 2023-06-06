@@ -18,4 +18,4 @@ Wait - tsc -w generates a ton of errors because no classes found. And what's the
 
 This is automatic TS class generation from the early days of Flow/Typescript classes. This code was pulled from a lot of older projects which rely heavily on the 'self' idiom (which is what TS classes transpile to under the covers). Yeah this probably needs to be convertd to straight TS classes. My main reason for doing so was that self lets you play games w closures that you really easily do with legit TS classes (instead you end up w a zillion attributes in the class and no clear dependency order of initialization logic)
 
-This is mostly an interim solution for running demos etc until real API access is obtained
+This is mostly an interim solution for running demos etc until real API access is obtained - chatbot-ui offers a much better UX this is mainly for exposing API-ish endpoints
