@@ -174,7 +174,7 @@ let run = async function() {
             if (client.requestId) {
                 let reqItem = requestMap[client.requestId];
                 if (reqItem) {
-                    thread.console.info("Request " + client.requestId + " is done")
+                    thread.console.bold("Request " + client.requestId + " is done")
 
                     // full snapshot is in client.data
                     // we want to calculate the new portion (after the prompt)
@@ -192,7 +192,7 @@ let run = async function() {
                     if (client.data.length < offset) {
                         // assume a reset happened
                         offset = convoMap[client.clientId] = 0;
-                        thread.console.warn("Resetting conversation memory")
+                        thread.console.warn("Resetting conversation memory due to unexpected change in offset")
                     }
 
                     //thread.console.info("client data: " + client.data)
@@ -370,6 +370,10 @@ let run = async function() {
             res.redirect('/index.html');
         });
 
+        app.get("/editor", async function(req, res) {
+            thread.console.info("Editor")
+            res.redirect('/editor.html');
+        });
 
     }
 
