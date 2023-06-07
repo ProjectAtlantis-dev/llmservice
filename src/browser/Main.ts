@@ -86,7 +86,7 @@ let Main = function ():MainT {
             bufferMap[getBufferKey(client)] = client.data || "";
 
             if (selectedClient) {
-                modelOutput.innerText = bufferMap[getBufferKey(selectedClient)];
+                modelOutput.innerText += bufferMap[getBufferKey(selectedClient)];
                 modelOutput.scrollTop = modelOutput.scrollHeight;
             }
 

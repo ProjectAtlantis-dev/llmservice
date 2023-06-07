@@ -176,45 +176,7 @@ let run = async function() {
                 if (reqItem) {
                     thread.console.bold("Request " + client.requestId + " is done")
 
-                    // full snapshot is in client.data
-                    // we want to calculate the new portion (after the prompt)
-
-
-                    let offset = 0;
-                    if (!Reflect.has(convoMap, client.clientId)) {
-                        thread.console.info("Creating new conversation memory")
-                        offset = convoMap[client.clientId] = 0;
-                    } else {
-                        offset = convoMap[client.clientId];
-                        thread.console.info("Using existing conversation memory at offset " + offset)
-                    }
-
-                    if (client.data.length < offset) {
-                        // assume a reset happened
-                        offset = convoMap[client.clientId] = 0;
-                        thread.console.warn("Resetting conversation memory due to unexpected change in offset")
-                    }
-
-                    //thread.console.info("client data: " + client.data)
-                    thread.console.info("Trying to find prompt [" + reqItem.request.prompt + "]")
-                    let start = client.data.indexOf(reqItem.request.prompt, offset);
-
-                    let buffer;
-                    if (start >= 0) {
-                        thread.console.info("Found prompt at " + start)
-                        buffer = client.data.substring(start + reqItem.request.prompt.length);
-                        thread.console.info("Buffer: " + buffer);
-                        convoMap[client.clientId] = start + reqItem.request.prompt.length + client.data.length;
-                    } else {
-                        thread.console.softError("Unable to find prompt at offset " + offset)
-                        thread.console.info("Buffer: " + client.data.substr(start),20 )
-                        // assume a reset happened
-                        buffer = client.data;
-                        convoMap[client.clientId] = client.data.length;
-                    }
-
-                    client.completion = buffer;
-
+                    client.completion = client.data
 
                     // should have either error or data attribute set
                     reqItem.callback(client);
