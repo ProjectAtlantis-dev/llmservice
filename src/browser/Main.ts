@@ -175,6 +175,8 @@ let Main = function ():MainT {
             if (selectedClient) {
                 // refresh selected client
                 selectedClient = modelMap[selectedClient.clientId]
+            } else {
+                modelOutput.innerText = "";
             }
 
             // rebuild model list
@@ -337,9 +339,10 @@ let Main = function ():MainT {
                         thread.console.softError("client lacks request map")
                     } else {
 
+                        let lastRow;
                         Object.keys(selectedClient.requestMap).map(function(rid, i) {
 
-                            let row = document.createElement("tr");
+                            let row = lastRow = document.createElement("tr");
                             row.style.whiteSpace = "nowrap";
                             row.style.cursor = 'pointer';
 
@@ -378,11 +381,10 @@ let Main = function ():MainT {
 
                             table.appendChild(row);
 
-                            row.scrollIntoView(false);
-
                         });
 
                         requestList.appendChild(table)
+                        lastRow.scrollIntoView(false);
                     }
 
                 } else {

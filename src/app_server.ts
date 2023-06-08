@@ -146,7 +146,6 @@ let run = async function() {
 
                         let client = modelMap[clientInfo.clientId];
 
-
                         let conn = connMap[clientInfo.clientId];
                         if (conn) {
                             thread.console.info("Testing connection [" + clientInfo.clientId + "]")
@@ -160,7 +159,9 @@ let run = async function() {
                                 data: clientInfo.data
                             };
 
-                            client.requestMap[requestId] = {
+                            thread.console.debug("payload", payload)
+
+                            let request = {
                                 mode: "browser",
                                 callback:   function() {
                                                 thread.console.info("Callback for request " + requestId + " was triggered but no client side action registered")
@@ -168,8 +169,9 @@ let run = async function() {
                                 lastSeen: new Date(),
                                 completion: ""
                             }
+                            client.requestMap[requestId] = request;
 
-                            thread.console.debug("model map 2", modelMap)
+                            thread.console.debug("request " + requestId, request)
 
                             conn.send(JSON.stringify(payload));
 
@@ -196,7 +198,7 @@ let run = async function() {
 
 
         let checkIdle = function() {
-            thread.console.info("Checking idle")
+            //thread.console.info("Checking idle")
 
             //thread.console.debug("model map", modelMap)
 
@@ -207,28 +209,32 @@ let run = async function() {
                 if (requestMap) {
                     Object.keys(requestMap).map(function(rid) {
 
-
-                        thread.console.info("Checking idle for request " + rid)
-
                         let reqItem = requestMap[rid];
 
                         if (!reqItem["DEAD"]) {
 
-                            thread.console.debug("idle request map", reqItem)
+                            thread.console.info("Checking idle for request " + rid)
+
 
                             // compute time elapsed
                             let now = new Date();
                             let milliElapsed = now.getTime() - reqItem.lastSeen.getTime()
+                            reqItem["elapsed"] = milliElapsed
+
                             if (milliElapsed > 7000) {
 
                                 thread.console.bold("Request " + rid + " idle for " + milliElapsed + "ms; assumed either done or dead")
 
-                                reqItem["elapsed"] = milliElapsed
-
                                 // should have either error or data attribute set
                                 if (reqItem.callback) {
+
+                                    thread.console.warn("ASSIGNING DEAD TO " + rid)
+                                    thread.console.debug("dead request", reqItem)
+
                                     reqItem["DEAD"] = true;
                                     reqItem.callback(clientId, rid);
+
+
                                 } else {
                                     if (reqItem.mode === "browser") {
                                         // continue
@@ -331,7 +337,13 @@ let run = async function() {
                                     client.requestMap[message.requestId].completion += message.data;
 
 
-                                    thread.console.debug("snapshot request", client)
+                                    if (!client.requestMap[message.requestId].completion) {
+                                        thread.console.softError("Snapshot completion failed")
+                                        thread.console.debug("bad message", message)
+                                    }
+
+
+                                    thread.console.warn("snapshot request completion updated from message", client)
                                 } else {
                                     thread.console.softError("Request map does not have entry for reqeust " + message.requestId)
                                 }
