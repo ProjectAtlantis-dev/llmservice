@@ -265,7 +265,7 @@ let run = async function() {
         }
 
         //needs to exceed normal update delay (see extension content.js)
-        setInterval(checkIdle, 7000)
+        setInterval(checkIdle, 1000)
 
         wsServer.on('connection', conn => {
             thread.console.info("Extension connected");
