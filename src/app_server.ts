@@ -456,13 +456,32 @@ let run = async function() {
 
             try {
                 let obj:any = await p
+
                 let client = modelMap[obj.clientId]
                 let request = client.requestMap[obj.requestId]
 
+                let completion = request.completion;
+
+                let samplePrompt = reqData.prompt.substring(0,10);
+                if (completion.indexOf(samplePrompt) >= 0) {
+                    // skip past prompt
+                    completion = completion.substring( completion.indexOf(samplePrompt) + reqData.prompt.length)
+                }
+
+                completion = completion.trim();
+
+                if (completion.startsWith("ChatGPT")) {
+                    completion = completion.substring("ChatGPT".length)
+                    completion = completion.trim();
+                }
+
+
                 // for langchain
                 let resultObj = {
-                    completion: request.completion
+                    completion
                 }
+
+
                 thread.console.debug("Returning LLM API", resultObj)
                 res.send(JSON.stringify(resultObj));
             } catch (err) {
