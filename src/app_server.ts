@@ -48,6 +48,10 @@ let InspectObject = require("./selftyped/InspectObject").class;
 import {RequestT} from "./common/Common";
 import {ReplyT} from "./common/Common";
 import {LLMRequestT} from "./common/Common";
+import {LLMRequestMapT} from "./common/Common";
+import {MessageT} from "./common/Common";
+import {MiniRequestT} from "./common/Common";
+
 
 import {SockClient} from "./selftyped/SockClient";
 
@@ -76,6 +80,7 @@ let run = async function() {
     let server:ServerT = new Server(serverThread);
 
 
+
     // for api connections
     server.setup = async function(
         thread:ThreadT,
@@ -95,14 +100,16 @@ let run = async function() {
         }
         let convoMap:ConvoMapT = {};
 
-        type LLMRequestMapItemT = {
-            callback: Function,
-            request: LLMRequestT
+        // to browser
+        type PayloadT = {
+            mode: string,  // was called by either api or browser
+            clientId: string,
+            requestId: string,
+            data: string
         }
-        type LLMRequestMapT = {
-            [clientId:string]: LLMRequestMapItemT
-        }
-        let requestMap:LLMRequestMapT = {};
+
+
+
 
         // browser extension connections (no socket.io to keep it simple)
         const wsServer = new WebSocketBase.Server({ port: PORTNUM_WEBSOCK });
@@ -118,7 +125,7 @@ let run = async function() {
                     //thread.console.bold("Received request from " + websocket._name);
 
                     let req:RequestT = unsafeHelper.extractUnsafeJSO(thread, reqBuffer, resultBoard);
-                    //thread.console.debug("request", req);
+                    //thread.console.debug("got request", req);
 
                     let reply:ReplyT = {
                         handle: req.handle,
@@ -127,23 +134,42 @@ let run = async function() {
                     };
 
 
-                    if (req.command === "loadModelMap") {
+                    if (req.command === "loadTelemetry") {
 
                         //thread.console.info("model map", modelMap)
                         reply.data = modelMap;
 
                     } else if (req.command === "test") {
+                        thread.console.debug("got request", req);
 
-                        let clientInfo = req.data as ClientT;
+                        let clientInfo = req.data as MiniRequestT
+
+                        let client = modelMap[clientInfo.clientId];
+
 
                         let conn = connMap[clientInfo.clientId];
                         if (conn) {
                             thread.console.info("Testing connection [" + clientInfo.clientId + "]")
 
-                            let payload = {
+                            let requestId = uuid.v4();
+
+                            let payload:PayloadT = {
+                                mode: "browser",
                                 clientId: clientInfo.clientId,
+                                requestId,
                                 data: clientInfo.data
                             };
+
+                            client.requestMap[requestId] = {
+                                mode: "browser",
+                                callback:   function() {
+                                                thread.console.info("Callback for request " + requestId + " was triggered but no client side action registered")
+                                            },
+                                lastSeen: new Date(),
+                                completion: ""
+                            }
+
+                            thread.console.debug("model map 2", modelMap)
 
                             conn.send(JSON.stringify(payload));
 
@@ -169,30 +195,71 @@ let run = async function() {
 
 
 
-        let notifyIdle = function(client:ClientT) {
-            thread.console.info("Checking to see if " + client.clientId + " is done")
-            if (client.requestId) {
-                let reqItem = requestMap[client.requestId];
-                if (reqItem) {
-                    thread.console.bold("Request " + client.requestId + " is done")
+        let checkIdle = function() {
+            thread.console.info("Checking idle")
 
-                    client.completion = client.data
+            //thread.console.debug("model map", modelMap)
 
-                    // should have either error or data attribute set
-                    reqItem.callback(client);
-                } else {
-                    thread.console.warn("Request " + client.requestId + " not found");
-                    thread.console.debug("request map", requestMap);
+            Object.keys(modelMap).map(function(clientId) {
+                let client = modelMap[clientId];
+
+                let requestMap:LLMRequestMapT = client.requestMap
+                if (requestMap) {
+                    Object.keys(requestMap).map(function(rid) {
+
+
+                        thread.console.info("Checking idle for request " + rid)
+
+                        let reqItem = requestMap[rid];
+
+                        if (!reqItem["DEAD"]) {
+
+                            thread.console.debug("idle request map", reqItem)
+
+                            // compute time elapsed
+                            let now = new Date();
+                            let milliElapsed = now.getTime() - reqItem.lastSeen.getTime()
+                            if (milliElapsed > 7000) {
+
+                                thread.console.bold("Request " + rid + " idle for " + milliElapsed + "ms; assumed either done or dead")
+
+                                reqItem["elapsed"] = milliElapsed
+
+                                // should have either error or data attribute set
+                                if (reqItem.callback) {
+                                    reqItem["DEAD"] = true;
+                                    reqItem.callback(clientId, rid);
+                                } else {
+                                    if (reqItem.mode === "browser") {
+                                        // continue
+                                    } else {
+                                        thread.console.softError("API request " + rid + " lacks callback")
+                                    }
+
+                                    // just delete request when too old?
+                                    //delete requestMap[rid]
+                                }
+
+
+
+                            } else {
+                                thread.console.info("Request " + rid + " idle for " + milliElapsed + " ms")
+
+
+                            }
+                        } else {
+                            //thread.console.info("Request " + rid + " already dead")
+                        }
+
+
+
+                    });
                 }
-            } else {
-                // not found
-                thread.console.warn("No request found")
-                thread.console.debug("client", client)
-            }
+            });
         }
-        //needs to exceed normal update delay (see extension content.js)
-        let debouncedNotifyIdle = util.debounce(notifyIdle, 7000);
 
+        //needs to exceed normal update delay (see extension content.js)
+        setInterval(checkIdle, 7000)
 
         wsServer.on('connection', conn => {
             thread.console.info("Extension connected");
@@ -203,45 +270,93 @@ let run = async function() {
 
                 try {
 
-                    let client:ClientT = JSON.parse(buffer)
+                    let message:MessageT = JSON.parse(buffer)
 
 
-                    if (client.message === "announce") {
+                    if (message.message === "announce") {
 
                         //thread.console.info(`Got extension client announce`);
 
-                        modelMap[client.clientId] = client;
-                        modelMap[client.clientId].lastSeen = new Date();
-                        conn._client = client;
-                        connMap[client.clientId] = conn;
+                        let client = modelMap[message.clientId]
+                        if (!client) {
+
+                            client =  {
+                                hostId: message.hostId,
+                                clientId: message.clientId,
+                                service: message.service,
+                                model: message.model,
+                                clientType: message.clientType,
+                                lastSeen: new Date(),
+                                requestMap: {}
+                            };
+
+                            modelMap[message.clientId] = client;
+                            conn._client = client;
+                            connMap[message.clientId] = conn;
+                        } else {
+                            // update
+                            client.service = message.service;
+                            client.model = message.model
+                            client.lastSeen = new Date()
+                        }
 
                         // we don't broadcast but instead let client(s) refresh
 
-                    } else if (client.message === "terminated") {
+                    } else if (message.message === "terminated") {
 
-                        delete modelMap[client.clientId];
-                        delete connMap[client.clientId];
+                        delete modelMap[message.clientId];
+                        delete connMap[message.clientId];
 
-                    } else {
+                    } else if (message.message === "snapshot") {
+
                         thread.console.info("Got snapshot")
-                        thread.console.debug("snapshot", client);
+                        thread.console.debug("snapshot", message);
+
+                        // update idle
+                        let client = modelMap[message.clientId];
+
+                        if (client) {
+
+                            client.service = message.service;
+                            client.model = message.model
+                            client.lastSeen = new Date()
+
+                            if (!message.requestId) {
+                                thread.console.softError("Snapshot lacks request id")
+                            } else {
+
+                                if (client.requestMap[message.requestId]) {
+                                    thread.console.warn("Updated last seen for request " + message.requestId);
+                                    client.requestMap[message.requestId].lastSeen = new Date();
+                                    client.requestMap[message.requestId].completion += message.data;
 
 
+                                    thread.console.debug("snapshot request", client)
+                                } else {
+                                    thread.console.softError("Request map does not have entry for reqeust " + message.requestId)
+                                }
+                            }
 
-                        // broadcast the snapshot
+
+                        } else {
+                            thread.console.softError("Snapshot message pointing to invalid client: " + message.clientId)
+                        }
+
+                        // broadcast the snapshot so client can see activity
                         Object.keys(websockMap).map(function(name:string) {
                             thread.console.debug("Notifying " + name)
 
                             let websocket = websockMap[name];
                             if (!websocket._dead) {
-                                websocket.emit('snapshot', client);
+                                websocket.emit('snapshot', message);
                             }
 
                         });
 
-                        debouncedNotifyIdle(client);
-
+                    } else {
+                        thread.console.softError("Unknown message received from client: " + message.message)
                     }
+
 
                 } catch (err) {
                     thread.console.softError(err.toString())
@@ -287,16 +402,27 @@ let run = async function() {
                         if (conn) {
                             thread.console.info("Sending request to connection [" + client.clientId + "]")
 
-                            let requestId = uuid.v4();
-
-                            requestMap[requestId] = {
-                                callback:   function(client:ClientT) {
-                                                resolve(client)
-                                            },
-                                request:    reqData
+                            let requestMap:LLMRequestMapT = client.requestMap
+                            if (!requestMap) {
+                                requestMap = client["_requestMap"] = {};
                             }
 
-                            let payload = {
+                            let requestId = uuid.v4();
+
+                            // create api request
+                            requestMap[requestId] = {
+                                mode:       "api",
+                                callback:   function(clientId, requestId) {
+                                                resolve({clientId, requestId})
+                                            },
+                                lastSeen: new Date(),
+                                completion: ""
+                            }
+
+                            thread.console.debug("model map 2", modelMap)
+
+                            let payload:PayloadT = {
+                                mode: "api",
                                 clientId: client.clientId,
                                 requestId,
                                 data: reqData.prompt
@@ -317,8 +443,16 @@ let run = async function() {
             });
 
             try {
-                let result:ClientT = await p as ClientT;
-                res.send(JSON.stringify(result));
+                let obj:any = await p
+                let client = modelMap[obj.clientId]
+                let request = client.requestMap[obj.requestId]
+
+                // for langchain
+                let resultObj = {
+                    completion: request.completion
+                }
+                thread.console.debug("Returning LLM API", resultObj)
+                res.send(JSON.stringify(resultObj));
             } catch (err) {
                 thread.console.softError(err.toString());
                 res.send(JSON.stringify({error: err.toString()}));

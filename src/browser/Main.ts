@@ -22,6 +22,8 @@ import {RequestT} from "../common/Common";
 import {ReplyT} from "../common/Common";
 import {ClientT} from "../common/Common";
 import {ClientMapT}  from "../common/Common";
+import {MessageT} from "../common/Common";
+import {MiniRequestT} from "../common/Common";
 
 import {SockClient} from "../selftyped/SockClient";
 
@@ -54,9 +56,10 @@ let Main = function ():MainT {
     self.run = async function() {
 
 
-        let bufferMap = {};
+        let clientBufferMap = {};
         let modelMap:ClientMapT = {};
         let selectedClient:ClientT;
+        let selectedRequest:string;
 
         let history = [];
         let historyCursor = null;
@@ -74,21 +77,29 @@ let Main = function ():MainT {
 
         let modelOutput = getElementById("model-output");
 
-        let getBufferKey = function(cl) {
-            return cl.clientId + " " + cl.service + " " + cl.model;
-        }
 
-        llmClient.wsocket.on("snapshot", async function(client:ClientT) {
+        llmClient.wsocket.on("snapshot", async function(message:MessageT) {
             thread.console.info("Received LLM snapshot");
 
-            thread.console.debug("snapshot", client);
+            thread.console.debug("snapshot", message);
 
-            bufferMap[getBufferKey(client)] = client.data || "";
+            if (!message.requestId) {
+                thread.console.warn("Snapshot lacks request id")
+            }
 
-            if (selectedClient) {
-                modelOutput.innerText += bufferMap[getBufferKey(selectedClient)];
+            if (Reflect.has(clientBufferMap, message.clientId)) {
+                clientBufferMap[message.clientId] += message.data || "";
+            } else {
+                clientBufferMap[message.clientId] = message.data || "";
+            }
+
+            if (selectedClient.clientId === message.clientId) {
+                // refresh
+                modelOutput.innerText = clientBufferMap[message.clientId];
                 modelOutput.scrollTop = modelOutput.scrollHeight;
             }
+
+            buildModelMap()
 
 
         });
@@ -100,16 +111,18 @@ let Main = function ():MainT {
 
         let inputArea = getElementById("model-input") as HTMLInputElement;
         inputArea.addEventListener('keydown', function(event) {
-            if (!history.length) {
-                thread.console.debug("Nothing in history")
-                return;
-            }
-
-            thread.console.debug("history", history);
 
 
 
             if (event.key === 'ArrowUp') {
+
+                if (!history.length) {
+                    thread.console.debug("Nothing in history")
+                    return;
+                }
+
+                thread.console.debug("history", history);
+
                 if (historyCursor === null) {
                     historyCursor = history.length-1;
                     thread.console.debug("History set to " + historyCursor)
@@ -123,6 +136,14 @@ let Main = function ():MainT {
 
                 inputArea.value = history[historyCursor];
             } else if (event.key === 'ArrowDown') {
+
+                if (!history.length) {
+                    thread.console.debug("Nothing in history")
+                    return;
+                }
+
+                thread.console.debug("history", history);
+
                 if (historyCursor === null) {
                     thread.console.debug("No history cursor")
                     return;
@@ -148,18 +169,24 @@ let Main = function ():MainT {
         let buildModelMap = async function() {
 
             //thread.console.info("Requesting model map")
-            modelMap = await llmClient.sendRequest("loadModelMap");
-            //thread.console.debug("modelMap", modelMap)
+            modelMap = await llmClient.sendRequest("loadTelemetry") as ClientMapT;
+            thread.console.debug("modelMap", modelMap)
+
+            if (selectedClient) {
+                // refresh selected client
+                selectedClient = modelMap[selectedClient.clientId]
+            }
 
             // rebuild model list
             let modelList:HTMLElement = getElementById("model-list") as HTMLSelectElement;
             modelList.style.display = "block";
-
-            modelList.innerHTML = "";
             modelList.style.boxSizing = "border-box"
 
+            modelList.innerHTML = "";
+
+
             let clientNames = Object.keys(modelMap).sort();
-            //thread.console.debug("client names", clientNames);
+            thread.console.debug("client names", clientNames);
 
             if (clientNames.length) {
 
@@ -172,16 +199,12 @@ let Main = function ():MainT {
 
                     let row = document.createElement("tr");
 
-                    //thread.console.info("Doing client " + clientName);
+                    thread.console.info("Doing client " + clientName);
 
                     let client = modelMap[clientName];
 
                     //thread.console.debug("client", client)
 
-                    //let item = document.createElement("div");
-                    //item.style.display = 'grid'
-                    //item.style.boxSizing = "border-box"
-                    //item.style.gridTemplateColumns = "repeat(6, min-content);"
                     row.style.whiteSpace = "nowrap";
                     row.style.cursor = 'pointer';
 
@@ -218,6 +241,7 @@ let Main = function ():MainT {
                             if (client.clientId === selectedClient.clientId) {
                                 // deselect
                                 selectedClient = null;
+                                sendButton.disabled = true;
                                 return;
                             }
                         }
@@ -226,8 +250,10 @@ let Main = function ():MainT {
                         selectedClient = client;
                         sendButton.disabled = false;
 
-                        modelOutput.innerText = bufferMap[getBufferKey(selectedClient)] || "";
+                        modelOutput.innerText = clientBufferMap[selectedClient.clientId] || "";
                         modelOutput.scrollTop = modelOutput.scrollHeight;
+
+                        buildModelMap();
 
                     });
 
@@ -288,13 +314,80 @@ let Main = function ():MainT {
                     }
 
                     table.appendChild(row);
-                    //row.scrollIntoView(false);
+
 
                 });
 
                 modelList.appendChild(table)
 
 
+                let requestList:HTMLElement = getElementById("request-list") as HTMLSelectElement;
+                requestList.style.display = "block";
+                requestList.style.boxSizing = "border-box"
+                requestList.innerHTML = "";
+
+                if (selectedClient) {
+
+                    thread.console.debug("selected client", selectedClient)
+
+                    let table = document.createElement("table");
+                    table.style.width = "100%";
+
+                    if (!Reflect.has(selectedClient, "requestMap")) {
+                        thread.console.softError("client lacks request map")
+                    } else {
+
+                        Object.keys(selectedClient.requestMap).map(function(rid, i) {
+
+                            let row = document.createElement("tr");
+                            row.style.whiteSpace = "nowrap";
+                            row.style.cursor = 'pointer';
+
+                            let request = selectedClient.requestMap[rid];
+
+                            let makeCell = function() {
+                                let cell = document.createElement("td");
+                                cell.style.padding = "5px"
+                                cell.style.borderRight = "1px solid #9090c0"
+                                return cell
+                            }
+
+                            {
+                                let cell = makeCell()
+                                cell.innerText = rid
+                                row.appendChild(cell)
+                            }
+
+                            {
+                                let cell = makeCell()
+                                cell.innerText = request.lastSeen.toString()
+                                row.appendChild(cell)
+                            }
+
+                            {
+                                let cell = makeCell()
+                                if (request["DEAD"]) {
+                                    cell.innerText = "done"
+                                } else if (request["elapsed"]) {
+                                    cell.innerText = request["elapsed"]
+                                } else {
+                                    cell.innerText = "pending";
+                                }
+                                row.appendChild(cell)
+                            }
+
+                            table.appendChild(row);
+
+                            row.scrollIntoView(false);
+
+                        });
+
+                        requestList.appendChild(table)
+                    }
+
+                } else {
+                    thread.console.info("No selected client");
+                }
 
             } else {
                 thread.console.info("No clients found");
@@ -304,6 +397,8 @@ let Main = function ():MainT {
                 modelList.appendChild(item);
 
             }
+
+
 
 
         }
@@ -331,10 +426,11 @@ let Main = function ():MainT {
                 if (inputArea.value) {
                     thread.console.info("Sending " + inputArea.value);
 
-                    await llmClient.sendRequest("test", {
+                    let miniRequest:MiniRequestT = {
                         clientId: client.clientId,
                         data: inputArea.value
-                    });
+                    }
+                    await llmClient.sendRequest("test", miniRequest)
 
                     if (inputArea.value != history[0]) {
                         history.push(inputArea.value);

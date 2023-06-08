@@ -116,20 +116,44 @@ export type TabDataFieldMapT = {
 
 // LLM specific stuff
 
-// browser client
-export type ClientT = {
-    hostId: string,
+// from browser
+export type MessageT = {
+    message: string,
+    hostId: string,  // browser id
+    clientType: string
     clientId: string,
     service: string,
     model: string,
+
+    requestId: string,
+
+    data: string
+}
+
+export type LLMRequestMapItemT = {
+    mode: string,
+    callback: Function,
+    lastSeen: Date,
+    completion: string
+}
+export type LLMRequestMapT = {
+    [clientId:string]: LLMRequestMapItemT
+}
+
+
+// browser client
+export type ClientT = {
+    clientId: string,
+    service: string,
+    model: string,
+
+    hostId: string,
     clientType: string,
-    message: string,
-    data:string,
+
     lastSeen: Date,
 
     // for conversation stuff
-    requestId: string,
-    completion: string
+    requestMap: LLMRequestMapT
 }
 
 export type ClientMapT = {
@@ -145,5 +169,8 @@ export type LLMRequestT = {
     prompt: string
 }
 
-
+export type MiniRequestT = {
+    clientId: string,
+    data: string
+}
 
