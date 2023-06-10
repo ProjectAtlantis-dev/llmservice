@@ -221,7 +221,7 @@ let run = async function() {
                             let milliElapsed = now.getTime() - reqItem.lastSeen.getTime()
                             reqItem["elapsed"] = milliElapsed
 
-                            if (milliElapsed > 7000) {
+                            if (milliElapsed > 20000) {
 
                                 thread.console.bold("Request " + rid + " idle for " + milliElapsed + "ms; assumed either done or dead")
 
@@ -470,11 +470,14 @@ let run = async function() {
 
                 completion = completion.trim();
 
+                function removeLastChars(str, x) {
+                    return str.slice(0, Math.max(0, str.length - x));
+                }
+
                 if (completion.startsWith("ChatGPT")) {
                     completion = completion.substring("ChatGPT".length)
                     completion = completion.trim();
                 }
-
 
                 // for langchain
                 let resultObj = {
