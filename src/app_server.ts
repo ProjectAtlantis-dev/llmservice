@@ -221,7 +221,7 @@ let run = async function() {
                             let milliElapsed = now.getTime() - reqItem.lastSeen.getTime()
                             reqItem["elapsed"] = milliElapsed
 
-                            if (milliElapsed > 20000) {
+                            if (milliElapsed > 8000) {
 
                                 thread.console.bold("Request " + rid + " idle for " + milliElapsed + "ms; assumed either done or dead")
 
@@ -281,7 +281,7 @@ let run = async function() {
 
                     if (message.message === "announce") {
 
-                        //thread.console.info(`Got extension client announce`);
+                        thread.console.info(`Got extension client announce`);
 
                         let client = modelMap[message.clientId]
                         if (!client) {
@@ -307,6 +307,32 @@ let run = async function() {
                         }
 
                         // we don't broadcast but instead let client(s) refresh
+
+                    } else if (message.message === "ping") {
+
+                        thread.console.info(`Got ping`);
+
+                        let client = modelMap[message.clientId]
+                        if (client) {
+                            // update
+                            client.lastSeen = new Date()
+
+                            if (!message.requestId) {
+                                thread.console.softError("Ping lacks request id")
+                            } else {
+
+                                if (client.requestMap[message.requestId]) {
+                                    thread.console.warn("Updated last seen for request " + message.requestId);
+                                    client.requestMap[message.requestId].lastSeen = new Date();
+                                } else {
+                                    thread.console.softError("Request map does not have entry for ping reqeust " + message.requestId)
+                                }
+                            }
+
+                        } else {
+                            thread.console.softError("Client " + message.clientId + " not announced yet")
+                        }
+
 
                     } else if (message.message === "terminated") {
 
