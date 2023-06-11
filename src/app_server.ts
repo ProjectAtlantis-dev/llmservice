@@ -281,7 +281,7 @@ let run = async function() {
 
                     if (message.message === "announce") {
 
-                        thread.console.info(`Got extension client announce`);
+                        //thread.console.info(`Got extension client announce`);
 
                         let client = modelMap[message.clientId]
                         if (!client) {
@@ -526,10 +526,6 @@ let run = async function() {
             res.redirect('/index.html');
         });
 
-        app.get("/editor", async function(req, res) {
-            thread.console.info("Editor")
-            res.redirect('/editor.html');
-        });
 
     }
 
