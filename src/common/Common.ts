@@ -151,6 +151,7 @@ export type ClientT = {
     clientType: string,
 
     lastSeen: Date,
+    status: string,
 
     // for conversation stuff
     requestMap: LLMRequestMapT

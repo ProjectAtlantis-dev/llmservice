@@ -136,7 +136,24 @@ let run = async function() {
 
                     if (req.command === "loadTelemetry") {
 
-                        //thread.console.info("model map", modelMap)
+                        Object.keys(modelMap).map(function(clientId) {
+                            let client = modelMap[clientId];
+
+                            let now = new Date();
+                            let secondsSince = (now.getTime() - client.lastSeen.getTime())/1000;
+                            if (secondsSince > 20) {
+                                client.status = "BAD"
+                            } else if (secondsSince > 10) {
+                                client.status = "LATE"
+                            } else {
+                                client.status = "GOOD"
+                            }
+
+                        });
+
+
+
+                        thread.console.info("model map", modelMap)
                         reply.data = modelMap;
 
                     } else if (req.command === "test") {
@@ -204,6 +221,8 @@ let run = async function() {
 
             Object.keys(modelMap).map(function(clientId) {
                 let client = modelMap[clientId];
+
+
 
                 let requestMap:LLMRequestMapT = client.requestMap
                 if (requestMap) {
@@ -293,6 +312,7 @@ let run = async function() {
                                 model: message.model,
                                 clientType: message.clientType,
                                 lastSeen: new Date(),
+                                status: "GOOD",
                                 requestMap: {}
                             };
 
@@ -448,7 +468,7 @@ let run = async function() {
                             let requestId = uuid.v4();
 
                             // create api request
-                            requestMap[requestId] = {
+                            let data = requestMap[requestId] = {
                                 mode:       "api",
                                 callback:   function(clientId, requestId) {
                                                 resolve({clientId, requestId})
@@ -457,7 +477,7 @@ let run = async function() {
                                 completion: ""
                             }
 
-                            thread.console.debug("model map 2", modelMap)
+                            thread.console.debug("request " + requestId, data);
 
                             let payload:PayloadT = {
                                 mode: "api",
