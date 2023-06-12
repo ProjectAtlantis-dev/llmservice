@@ -305,11 +305,11 @@ let Main = function ():MainT {
                                           client.lastSeen.getSeconds().toString().padStart(2,'0');
                         cell.innerText = lastSeenTxt;
 
-                        let now = new Date();
-                        let secondsSince = (now.getTime() - client.lastSeen.getTime())/1000;
-                        if (secondsSince > 20) {
+                        if (client.status === "BAD") {
                             row.style.color = 'red'
-                        } else if (secondsSince > 10) {
+                        } else if (client.status === "GOOD") {
+                            // leave default
+                        } else {
                             row.style.color = 'yellow'
                         }
                         row.appendChild(cell)
