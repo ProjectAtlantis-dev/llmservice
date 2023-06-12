@@ -450,7 +450,8 @@ let run = async function() {
 
                     let client = modelMap[clientId];
                     if (client.service === reqData.service &&
-                        client.model === reqData.model) {
+                        client.model === reqData.model &&
+                        client.status === "GOOD") {
 
                         // we have a match
 

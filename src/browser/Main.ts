@@ -170,7 +170,7 @@ let Main = function ():MainT {
 
             //thread.console.info("Requesting model map")
             modelMap = await llmClient.sendRequest("loadTelemetry") as ClientMapT;
-            thread.console.debug("modelMap", modelMap)
+            //thread.console.debug("modelMap", modelMap)
 
             if (selectedClient) {
                 // refresh selected client
