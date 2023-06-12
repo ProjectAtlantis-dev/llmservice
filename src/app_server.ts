@@ -151,9 +151,7 @@ let run = async function() {
 
                         });
 
-
-
-                        thread.console.info("model map", modelMap)
+                        //thread.console.info("model map", modelMap)
                         reply.data = modelMap;
 
                     } else if (req.command === "test") {
