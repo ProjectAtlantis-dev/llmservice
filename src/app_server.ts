@@ -405,7 +405,7 @@ let run = async function() {
                     } else if (message.message === "snapshot") {
 
                         thread.console.info("Got snapshot")
-                        thread.console.debug("snapshot", message);
+                        //thread.console.debug("snapshot", message);
 
                         // update idle
                         let client = modelMap[message.clientId];
@@ -483,7 +483,7 @@ let run = async function() {
 
         app.post("/llm", async function(req, res) {
             let reqData = req.body as LLMRequestT;
-            thread.console.debug("llm", reqData);
+            thread.console.debug("raw llm request", reqData);
 
             let p = new Promise(function(resolve, reject) {
 
@@ -499,6 +499,15 @@ let run = async function() {
                         client.status === "GOOD") {
 
                         // we have a match
+
+                        // trim prompt lines
+                        let promptLines = util.bufferToLines(reqData.prompt);
+                        let newPrompt = "";
+                        promptLines.map(function(pl) {
+                            let trimLine = pl.trim();
+                            newPrompt += trimLine + "\n";
+                        });
+                        reqData.prompt = newPrompt;
 
                         let conn = connMap[client.clientId];
                         if (conn) {
@@ -531,6 +540,8 @@ let run = async function() {
                                 data: reqData.prompt
                             };
 
+                            thread.console.debug("payload", payload);
+
                             conn.send(JSON.stringify(payload));
                             done = true;
                         } else {
@@ -551,6 +562,7 @@ let run = async function() {
                 let client = modelMap[obj.clientId]
                 let request = client.requestMap[obj.requestId]
 
+                thread.console.debug("Request", reqData);
                 thread.console.debug("Got result", request)
 
                 let completion = request.completion.trim();
@@ -560,6 +572,8 @@ let run = async function() {
                     // skip past prompt (should not happen if handled by browser)
                     completion = completion.substring(completion.lastIndexOf(reqData.prompt) + reqData.prompt.length)
                     thread.console.warn("Prompt found in output; trimmed to: " + completion)
+                } else {
+                    thread.console.warn("Prompt not found in output")
                 }
 
                 completion = completion.trim();
