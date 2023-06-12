@@ -505,6 +505,8 @@ let run = async function() {
                         let newPrompt = "";
                         promptLines.map(function(pl) {
                             let trimLine = pl.trim();
+                            // escape any double quotes
+                            trimLine = trimLine.replace(/\"/g, '\\"');
                             newPrompt += trimLine + "\n";
                         });
                         reqData.prompt = newPrompt;
