@@ -134,6 +134,7 @@ export type LLMRequestMapItemT = {
     mode: string,
     callback: Function,
     lastSeen: Date,
+    done: boolean,
     completion: string
 }
 export type LLMRequestMapT = {

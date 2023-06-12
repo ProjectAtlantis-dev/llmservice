@@ -182,7 +182,8 @@ let run = async function() {
                                                 thread.console.info("Callback for request " + requestId + " was triggered but no client side action registered")
                                             },
                                 lastSeen: new Date(),
-                                completion: ""
+                                completion: "",
+                                done: false
                             }
                             client.requestMap[requestId] = request;
 
@@ -228,48 +229,64 @@ let run = async function() {
 
                         let reqItem = requestMap[rid];
 
+
                         if (!reqItem["DEAD"]) {
 
-                            thread.console.info("Checking idle for request " + rid)
-
-
-                            // compute time elapsed
-                            let now = new Date();
-                            let milliElapsed = now.getTime() - reqItem.lastSeen.getTime()
-                            reqItem["elapsed"] = milliElapsed
-
-                            if (milliElapsed > 8000) {
-
-                                thread.console.bold("Request " + rid + " idle for " + milliElapsed + "ms; assumed either done or dead")
+                            if (reqItem.done) {
 
                                 // should have either error or data attribute set
                                 if (reqItem.callback) {
 
-                                    thread.console.warn("ASSIGNING DEAD TO " + rid)
-                                    thread.console.debug("dead request", reqItem)
+                                    thread.console.warn("ASSIGNING DONE (DEAD) TO " + rid)
+                                    //thread.console.debug("dead request", reqItem)
 
                                     reqItem["DEAD"] = true;
                                     reqItem.callback(clientId, rid);
+                                }
+                            } else {
+
+                                thread.console.info("Checking idle for request " + rid)
+
+
+                                // compute time elapsed
+                                let now = new Date();
+                                let milliElapsed = now.getTime() - reqItem.lastSeen.getTime()
+                                reqItem["elapsed"] = milliElapsed
+
+                                if (milliElapsed > 8000) {
+
+                                    thread.console.bold("Request " + rid + " idle for " + milliElapsed + "ms; assumed either done or dead")
+
+                                    // should have either error or data attribute set
+                                    if (reqItem.callback) {
+
+                                        thread.console.warn("ASSIGNING DEAD TO " + rid)
+                                        //thread.console.debug("dead request", reqItem)
+
+                                        reqItem["DEAD"] = true;
+                                        reqItem.callback(clientId, rid);
+
+
+                                    } else {
+                                        if (reqItem.mode === "browser") {
+                                            // continue
+                                        } else {
+                                            thread.console.softError("API request " + rid + " lacks callback")
+                                        }
+
+                                        // just delete request when too old?
+                                        //delete requestMap[rid]
+                                    }
+
 
 
                                 } else {
-                                    if (reqItem.mode === "browser") {
-                                        // continue
-                                    } else {
-                                        thread.console.softError("API request " + rid + " lacks callback")
-                                    }
+                                    thread.console.info("Request " + rid + " idle for " + milliElapsed + " ms")
 
-                                    // just delete request when too old?
-                                    //delete requestMap[rid]
+
                                 }
-
-
-
-                            } else {
-                                thread.console.info("Request " + rid + " idle for " + milliElapsed + " ms")
-
-
                             }
+
                         } else {
                             //thread.console.info("Request " + rid + " already dead")
                         }
@@ -295,12 +312,13 @@ let run = async function() {
 
                     let message:MessageT = JSON.parse(buffer)
 
+                    let client = modelMap[message.clientId]
 
                     if (message.message === "announce") {
 
                         //thread.console.info(`Got extension client announce`);
 
-                        let client = modelMap[message.clientId]
+
                         if (!client) {
 
                             client =  {
@@ -348,7 +366,34 @@ let run = async function() {
                             }
 
                         } else {
-                            thread.console.softError("Client " + message.clientId + " not announced yet")
+                            thread.console.softError("Client " + message.clientId + " pinged but not announced yet")
+                        }
+
+
+                    } else if (message.message === "done") {
+
+                        thread.console.info(`Got done`);
+
+                        let client = modelMap[message.clientId]
+                        if (client) {
+                            // update
+                            client.lastSeen = new Date()
+
+                            if (!message.requestId) {
+                                thread.console.softError("Done lacks request id")
+                            } else {
+
+                                if (client.requestMap[message.requestId]) {
+                                    thread.console.warn("Updated done for request " + message.requestId);
+                                    client.requestMap[message.requestId].lastSeen = new Date();
+                                    client.requestMap[message.requestId].done = true;
+                                } else {
+                                    thread.console.softError("Request map does not have entry for ping reqeust " + message.requestId)
+                                }
+                            }
+
+                        } else {
+                            thread.console.softError("Client " + message.clientId + " done but not announced yet")
                         }
 
 
@@ -473,7 +518,8 @@ let run = async function() {
                                                 resolve({clientId, requestId})
                                             },
                                 lastSeen: new Date(),
-                                completion: ""
+                                completion: "",
+                                done: false
                             }
 
                             thread.console.debug("request " + requestId, data);
@@ -505,19 +551,24 @@ let run = async function() {
                 let client = modelMap[obj.clientId]
                 let request = client.requestMap[obj.requestId]
 
-                let completion = request.completion;
+                thread.console.debug("Got result", request)
 
-                let samplePrompt = reqData.prompt.substring(0,10);
-                if (completion.indexOf(samplePrompt) >= 0) {
-                    // skip past prompt
-                    completion = completion.substring( completion.indexOf(samplePrompt) + reqData.prompt.length)
+                let completion = request.completion.trim();
+
+                //let samplePrompt = reqData.prompt.substring(0,10);
+                if (completion.lastIndexOf(reqData.prompt) >= 0) {
+                    // skip past prompt (should not happen if handled by browser)
+                    completion = completion.substring(completion.lastIndexOf(reqData.prompt) + reqData.prompt.length)
+                    thread.console.warn("Prompt found in output; trimmed to: " + completion)
                 }
 
                 completion = completion.trim();
 
+                /*
                 function removeLastChars(str, x) {
                     return str.slice(0, Math.max(0, str.length - x));
                 }
+                */
 
                 if (completion.startsWith("ChatGPT")) {
                     completion = completion.substring("ChatGPT".length)
