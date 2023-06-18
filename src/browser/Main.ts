@@ -315,6 +315,12 @@ let Main = function ():MainT {
                         row.appendChild(cell)
                     }
 
+                    {
+                        let cell = makeCell()
+                        cell.innerText = client.version
+                        row.appendChild(cell)
+                    }
+
                     table.appendChild(row);
 
 

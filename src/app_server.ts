@@ -329,6 +329,7 @@ let run = async function() {
                                 clientType: message.clientType,
                                 lastSeen: new Date(),
                                 status: "GOOD",
+                                version: message.version,
                                 requestMap: {}
                             };
 

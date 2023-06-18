@@ -116,17 +116,17 @@ export type TabDataFieldMapT = {
 
 // LLM specific stuff
 
-// from browser
+// from browser; very similar to Client
 export type MessageT = {
-    message: string,
-    hostId: string,  // browser id
-    clientType: string
     clientId: string,
     service: string,
     model: string,
+    hostId: string,  // browser id
+    clientType: string,
+    version: string,
 
+    message: string,
     requestId: string,
-
     data: string
 }
 
@@ -147,9 +147,9 @@ export type ClientT = {
     clientId: string,
     service: string,
     model: string,
-
     hostId: string,
     clientType: string,
+    version: string,
 
     lastSeen: Date,
     status: string,
